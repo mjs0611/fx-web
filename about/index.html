@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>집계 기준과 출처 | 환율 기록</title><meta name="description" content="집계 기준과 출처. ECB 참고 환율의 실제 관측일과 원화 환산 기록을 확인해요.">
+<link rel="canonical" href="https://fx.ditoaxis.com/about/"><meta property="og:url" content="https://fx.ditoaxis.com/about/">
+<meta property="og:type" content="website"><meta property="og:locale" content="ko_KR"><meta property="og:site_name" content="환율 기록">
+<meta property="og:title" content="집계 기준과 출처"><meta property="og:description" content="집계 기준과 출처. ECB 참고 환율의 실제 관측일과 원화 환산 기록을 확인해요.">
+
+<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+<link rel="stylesheet" href="/assets/site.css"><script src="/assets/site.js" defer></script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4557219410513767" crossorigin="anonymous"></script>
+</head><body><a class="skip" href="#main">본문으로 이동</a><div class="wrap">
+<header><a class="brand" href="/">환율 기록<span>원화로 읽는 세계 통화</span></a><a href="/about/">집계 기준</a></header>
+<nav class="currencies" aria-label="통화 선택"><a href="/usd/">USD</a><a href="/jpy/">JPY</a><a href="/eur/">EUR</a><a href="/cny/">CNY</a><a href="/gbp/">GBP</a></nav><main id="main"><article class="prose"><h1>환율을 모으는 기준</h1>
+<h2>하루 한 번 발표하는 참고 환율</h2><p><a href="https://frankfurter.dev/">Frankfurter</a>의 ECB 전용 API에서
+<a href="https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html">유럽중앙은행(ECB) 기준 환율</a>을 받아요. 은행에서 환전할 때 적용하는 환율이나 실시간 시세가 아니에요.
+ECB는 보통 영업일 16:00 중부유럽 시간 무렵에 발표해요. 발표와 수집 사이에는 차이가 있을 수 있어요.</p>
+<h2>원화 환율 계산</h2><p>원자료는 1EUR당 각 통화 금액이에요. 같은 관측일의 EUR→KRW를 EUR→외화로 나누면 외화 1단위의 원화 금액이 나와요.
+엔화는 여기에 100을 곱해 100엔 기준으로 보여줘요. 유로는 EUR→KRW 값을 그대로 사용해요.</p>
+<p>원자료의 소수 자릿수를 보존하고, 계산 중간에는 표시용 반올림을 하지 않아요. 표에서는 소수 둘째 자리까지 보여줘요.
+원화 환산·증감률·월평균·그래프는 운영자가 계산한 가공 정보이며 ECB가 직접 발표한 값이 아니에요.</p>
+<h2>빈 날짜와 비교 기준</h2><p>2015년부터 관측 자료를 모아요. 주말·휴일과 자료가 빠진 날짜에는 값을 만들거나 앞선 값을 채우지 않아요.
+최신 환율에도 실제 관측일을 붙여요. 자료가 없는 날짜를 휴일이라고 단정하지 않아요.</p>
+<p>전일 비교는 직전 관측일 기준이에요. 1주 전은 7일 전, 1년 전은 전년 같은 날짜를 기준으로 해요(2월 29일은 전년 2월 28일).
+그날 관측이 없으면 그 이전 7일 안의 가장 가까운 관측을 쓰고, 실제 비교일을 표시해요. 이 범위에도 자료가 없으면 비교를 보류해요.</p>
+<h2>월평균과 그래프</h2><p>월평균은 해당 월에 수집한 관측값의 산술평균이에요. 달력의 모든 날짜로 나누지 않아요.
+최저·최고가 여러 번이면 첫 관측일을 표시해요. 월이 지났어도 원자료가 빠질 수 있어 관측 수와 수집 범위를 함께 보여줘요.
+그래프의 점은 실제 관측이며 빈 날짜 사이를 선으로 잇지 않아요. 1개월·3개월·1년 범위는 마지막 관측일부터 30일·90일·365일이에요.</p>
+<h2>출처와 재사용</h2><p>자료 제공: Frankfurter / European Central Bank. 원자료는 <a href="https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html">ECB 웹사이트에서 무료로 받을 수 있어요</a>.
+<a href="https://www.ecb.europa.eu/services/using-our-site/disclaimer/html/index.en.html">ECB 재사용 조건과 면책 안내</a>에 따라 출처를 밝히고, 원자료를 정확히 전달하며, 가공 여부를 표시해요.
+정보를 유료 문서에 넣어 재배포한다면 구매 전과 자료 이용 때마다 원자료가 무료라는 점을 알려야 해요. 상업적 링크는 ECB 페이지를 프레임 안에 넣지 않고 열어야 해요.</p>
+<h2>운영과 문의</h2><p>운영자는 디토엑시스예요. 자료에 문제가 있으면 <a href="mailto:help.ditoaxis@gmail.com">help.ditoaxis@gmail.com</a>으로 알려주세요.</p>
+<p>이 사이트는 정보 제공용입니다. 실제 거래 조건은 이용하는 금융기관에서 확인해야 합니다.</p></article></main>
+<footer><p>ECB 참고 환율 · 하루 한 번 발표 · 은행 환율·실시간 시세와 달라요.</p>
+<p>출처: <a href="https://frankfurter.dev/">Frankfurter</a> · <a href="https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html">ECB</a> · 원화 환산·통계는 가공 정보예요.</p>
+<nav aria-label="사이트 안내"><a href="/about/">집계 기준과 재사용 조건</a><a href="/privacy/">개인정보처리방침</a></nav></footer></div></body></html>
