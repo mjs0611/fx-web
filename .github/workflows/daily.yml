@@ -1,0 +1,61 @@
+name: Daily ECB reference rates
+
+on:
+  schedule:
+    # After ECB publication in both summer and winter; later run retries outages.
+    - cron: '30 15 * * *'
+    - cron: '30 18 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: fx-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Run offline proof before updating or publishing
+        run: python3 -m unittest discover -s tests -v
+      - name: Restore persisted history and site
+        run: bash ops/publish.sh restore
+      - name: Fetch observed rates (including recovery after missed runs)
+        run: python3 fx.py update --history site/data/history.json
+      - name: Rebuild all pages
+        env:
+          ADSENSE_SLOT: ${{ vars.ADSENSE_SLOT }}
+        run: python3 fx.py build --history site/data/history.json --output site
+      - name: Persist only changed history or pages
+        run: bash ops/publish.sh publish
+      # Upload even when unchanged: a retry can recover a failed Pages deployment.
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

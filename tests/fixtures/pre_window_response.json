@@ -1,0 +1,18 @@
+{
+  "backfill": [
+    {"date": "2014-12-31", "base": "EUR", "quote": "KRW", "rate": 1320.5},
+    {"date": "2014-12-31", "base": "EUR", "quote": "USD", "rate": 1.21},
+    {"date": "2015-01-02", "base": "EUR", "quote": "KRW", "rate": 1330.25},
+    {"date": "2015-01-02", "base": "EUR", "quote": "USD", "rate": 1.2},
+    {"date": "2015-01-09", "base": "EUR", "quote": "KRW", "rate": 1340.75},
+    {"date": "2015-01-09", "base": "EUR", "quote": "USD", "rate": 1.19}
+  ],
+  "incremental": [
+    {"date": "2024-12-31", "base": "EUR", "quote": "KRW", "rate": 9999},
+    {"date": "2024-12-31", "base": "EUR", "quote": "USD", "rate": 9},
+    {"date": "2025-01-08", "base": "EUR", "quote": "KRW", "rate": 1511},
+    {"date": "2025-01-08", "base": "EUR", "quote": "USD", "rate": 1.2},
+    {"date": "2025-01-10", "base": "EUR", "quote": "KRW", "rate": 1520},
+    {"date": "2025-01-10", "base": "EUR", "quote": "USD", "rate": 1.3}
+  ]
+}
