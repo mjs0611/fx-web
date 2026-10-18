@@ -6,6 +6,8 @@
 
 기존 스케줄과 `refresh_rates=true` 수동 실행은 종전 수집·배포 동작을 유지합니다. 권한과 Pages·DNS·광고 설정은 변경하지 않습니다.
 
+이번 Cloudflare Web Analytics 도입은 개인정보처리방침 본문을 변경하므로 **정기 스케줄 또는 `refresh_rates=true` 수동 실행으로 반영해야 합니다.** `refresh_rates=false` UI 전용 경로는 본문 보존 가드가 이 변경을 거부하므로 사용할 수 없습니다.
+
 `https://fx.ditoaxis.com/`용 정적 사이트입니다. USD, JPY(100엔), EUR, CNY, GBP의 원화 환율, 월별 기록, 브라우저 계산기를 제공합니다. 은행 환율이나 실시간 시세가 아닌 **하루 한 번 발표하는 ECB 참고 환율**입니다.
 
 ## 실행 환경과 단일 검증 명령
@@ -72,6 +74,8 @@ JSON은 `schema: 1`, `base: EUR`, `provider: ECB`, `rates: { YYYY-MM-DD: { KRW: 
 
 `/`, `/<cur>/`, `/<cur>/<YYYY-MM>/`, `/about/`, `/privacy/`를 생성합니다. 통화 코드는 소문자입니다. 관측이 있는 달만 월별 페이지를 만듭니다. 각 페이지에 canonical·OG·설명을 넣고, 검색 가능한 페이지의 `sitemap.xml`, `robots.txt`, `CNAME`, `.nojekyll`을 생성합니다. `404.html`은 같은 스타일과 홈 링크를 제공하며 `noindex`로 지정하고 사이트맵에서는 제외합니다. 모든 페이지에서 로컬 SVG 파비콘을 사용합니다.
 
+모든 HTML(`404.html` 포함)의 head에는 AdSense 바로 옆에 공용 `<script defer src="https://ditoaxis.com/m.js"></script>`가 정확히 1개 있습니다. 분석 토큰은 회사 홈의 공용 로더에서만 관리합니다. 토큰이 비어 있거나 호스트가 `ditoaxis.com` 또는 그 하위 도메인이 아니면 비콘을 로드하지 않습니다.
+
 kospi-relay의 잉크색·비교표 스타일을 기준으로 흰 바탕, `#10172A` 잉크, `#DFE2E7` 구분선, 상승 적색·하락 청색을 사용합니다. 1120px 본문 비교표는 좁은 화면에서 통화별 비교 행으로 바뀝니다. 글자 크기 하한은 12px이며 폰트·차트 라이브러리를 외부에서 받지 않습니다. 정적 차트·표는 JavaScript 없이도 볼 수 있고, 계산기와 기간 버튼만 JavaScript로 활성화합니다.
 
 차트는 데스크톱에서 `900:240`, 600px 이하 화면에서 `900:600` 비율로 표시합니다. 정적 차트와 기간 선택 후 차트 모두 SVG가 늘어난 높이를 채우도록 설정합니다. CSS 계산상 390px 화면에서는 차트 영역 약 233px·실제 최저~최고 관측 범위 175px, 360px에서는 약 213px·160px입니다. 좁은 화면의 관측점에는 축소되지 않는 3px 테두리를 적용합니다. 실제 화면과 스크린샷은 코디네이터가 확인합니다.
@@ -86,7 +90,7 @@ kospi-relay의 잉크색·비교표 스타일을 기준으로 흰 바탕, `#1017
 ADSENSE_SLOT=1234567890 python3 fx.py build
 ```
 
-계산기 금액은 브라우저 안에서만 계산하며 저장·전송하지 않습니다. Google 광고 스크립트와 GitHub 호스팅의 정보 처리는 `/privacy/`에 설명합니다.
+계산기 금액은 브라우저 안에서만 계산하며 저장·전송하지 않습니다. 방문 통계에는 쿠키나 기기 식별자를 사용하지 않는 Cloudflare Web Analytics 비콘을 사용합니다. 공용 로더가 조건을 충족하면 `static.cloudflareinsights.com`에서 비콘 스크립트를 불러오고 `cloudflareinsights.com`으로 통계를 전송합니다. Google 광고 스크립트, GitHub 호스팅과 Cloudflare 방문 통계의 정보 처리는 `/privacy/`에 설명합니다.
 
 ## 코디네이터의 게시 설정
 

@@ -327,6 +327,8 @@ PRIVACY = '''<article class="prose"><h1>개인정보처리방침</h1>
 <a href="https://policies.google.com/technologies/partner-sites">Google의 파트너 사이트 정보 사용 안내</a>와
 <a href="https://policies.google.com/privacy">Google 개인정보처리방침</a>에서 처리 목적·보관·권리 행사 방법을 확인할 수 있습니다.</p>
 <p><a href="https://myadcenter.google.com/">Google 광고 설정</a>에서 개인 맞춤 광고를 관리하거나 브라우저 설정에서 쿠키를 차단·삭제할 수 있습니다.</p>
+<h2>방문 통계</h2><p><a href="https://www.cloudflare.com/web-analytics/">Cloudflare Web Analytics</a>로 방문 통계(페이지 주소, 유입 경로, 브라우저·기기 종류, 국가, 로딩 성능)를 수집합니다.
+쿠키나 기기 식별자를 사용하지 않고 개인을 알아볼 수 없는 집계로만 확인합니다.</p>
 <h2>문의 정보</h2><p>이메일 문의를 보내면 발신 주소와 문의 내용을 답변 목적으로 처리하며, 목적 달성 후 불필요한 정보를 삭제합니다. 열람·삭제 요청은 위 문의 주소로 보낼 수 있습니다.</p>
 </article>'''
 
@@ -349,6 +351,7 @@ def shell(title: str, path: str, body: str, slot="", noindex=False) -> str:
 <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
 <link rel="stylesheet" href="/assets/site.css"><script src="/assets/site.js" defer></script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={CLIENT}" crossorigin="anonymous"></script>
+<script defer src="https://ditoaxis.com/m.js"></script>
 </head><body><a class="skip" href="#main">본문으로 이동</a><div class="wrap">
 <nav class="service-family" aria-label="디토엑시스"><a href="https://ditoaxis.com/#products"><span class="axis-mark" aria-hidden="true">+</span>디토엑시스 서비스<span aria-hidden="true">↗</span></a></nav>
 <header><a class="brand" href="/">환율 기록<span>원화로 읽는 세계 통화</span></a><a href="/about/">집계 기준</a></header>

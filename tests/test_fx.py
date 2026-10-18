@@ -43,6 +43,7 @@ class Document(HTMLParser):
         self.text = []
         self.in_head = False
         self.head_titles = 0
+        self.head_scripts = []
         self.feed(source)
 
     def handle_starttag(self, tag, attrs):
@@ -51,6 +52,8 @@ class Document(HTMLParser):
             self.in_head = True
         elif tag == "title" and self.in_head:
             self.head_titles += 1
+        elif tag == "script" and self.in_head:
+            self.head_scripts.append(dict(attrs))
 
     def handle_endtag(self, tag):
         if tag == "head":
@@ -446,6 +449,27 @@ class PageTests(unittest.TestCase):
         self.assertEqual(len(urls), len(set(urls)))
         self.assertIn("Sitemap: https://fx.ditoaxis.com/sitemap.xml", (self.output / "robots.txt").read_text())
         self.assertEqual((self.output / "CNAME").read_text(), "fx.ditoaxis.com\n")
+
+    def test_every_generated_html_loads_shared_analytics_once_in_head(self):
+        url = "https://ditoaxis.com/m.js"
+        tag = '<script defer src="https://ditoaxis.com/m.js"></script>'
+        expected = [{"defer": None, "src": url}]
+        for label, data, slot in (("empty", fx.empty_history(), ""),
+                                  ("fixture", history(), ""),
+                                  ("ads", history(), "1234567890")):
+            with self.subTest(build=label):
+                count = fx.build(data, self.output, slot=slot)
+                pages = list(self.output.rglob("*.html"))
+                self.assertEqual(len(pages), count)
+                self.assertIn(self.output / "404.html", pages)
+                for page in pages:
+                    with self.subTest(page=page.relative_to(self.output)):
+                        source = page.read_text(encoding="utf-8")
+                        doc = Document(source)
+                        self.assertEqual(source.count(tag), 1)
+                        self.assertEqual(doc.attrs("script", src=url), expected)
+                        self.assertEqual([attrs for attrs in doc.head_scripts
+                                          if attrs.get("src") == url], expected)
 
     def test_not_found_page_and_local_assets_are_available(self):
         fx.build(history(), self.output)
