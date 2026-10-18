@@ -334,7 +334,7 @@ PRIVACY = '''<article class="prose"><h1>개인정보처리방침</h1>
 def shell(title: str, path: str, body: str, slot="", noindex=False) -> str:
     canonical = SITE_URL + "/" + path
     description = title + ". ECB 참고 환율의 실제 관측일과 원화 환산 기록을 확인해요."
-    links = ''.join(f'<a href="/{c.lower()}/"'+ (' aria-current="page"' if path == c.lower()+'/' else '') + f'>{c}</a>' for c in CURRENCIES)
+    links = ''.join(f'<a href="/{c.lower()}/"'+ (' aria-current="page"' if path.startswith(c.lower()+'/') else '') + f'>{c}</a>' for c in CURRENCIES)
     ad = (f'<aside class="ad-slot" aria-label="광고"><p>광고</p><ins class="adsbygoogle" '
           f'data-ad-client="{CLIENT}" data-ad-slot="{e(slot)}" data-ad-format="auto" '
           'data-full-width-responsive="true"></ins></aside>'
@@ -350,8 +350,9 @@ def shell(title: str, path: str, body: str, slot="", noindex=False) -> str:
 <link rel="stylesheet" href="/assets/site.css"><script src="/assets/site.js" defer></script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={CLIENT}" crossorigin="anonymous"></script>
 </head><body><a class="skip" href="#main">본문으로 이동</a><div class="wrap">
+<nav class="service-family" aria-label="디토엑시스"><a href="https://ditoaxis.com/#products"><span class="axis-mark" aria-hidden="true">+</span>디토엑시스 서비스<span aria-hidden="true">↗</span></a></nav>
 <header><a class="brand" href="/">환율 기록<span>원화로 읽는 세계 통화</span></a><a href="/about/">집계 기준</a></header>
-<nav class="currencies" aria-label="통화 선택">{links}</nav><main id="main">{body}{ad}</main>
+<nav class="currencies" aria-label="통화 선택">{links}</nav><main id="main" tabindex="-1">{body}{ad}</main>
 <footer><p>ECB 참고 환율 · 하루 한 번 발표 · 은행 환율·실시간 시세와 달라요.</p>
 <p>출처: <a href="https://frankfurter.dev/">Frankfurter</a> · <a href="{ECB_URL}">ECB</a> · 원화 환산·통계는 가공 정보예요.</p>
 <nav aria-label="사이트 안내"><a href="/about/">집계 기준과 재사용 조건</a><a href="/privacy/">개인정보처리방침</a></nav></footer></div></body></html>'''
@@ -395,10 +396,17 @@ def currency_page(history: dict, currency: str) -> str:
         payload = json.dumps([[d, float(v)] for d, v in points], separators=(',', ':'))
         body += f'<script type="application/json" id="chart-data">{payload}</script>'
     body += f'<section><h2>최근 관측 기록</h2>{daily_table(points[-20:], f"{multiplier}{unit}")}</section>'
-    body += '<section><h2>월별 평균 환율</h2><div class="month-links">'
+    body += '<section class="month-archive"><h2>월별 평균 환율</h2>'
     months = sorted({d[:7] for d, _ in points}, reverse=True)
-    body += ''.join(f'<a href="/{currency.lower()}/{month}/">{ko_month(month)}</a>' for month in months) or '<p class="empty">관측 자료가 쌓이면 월별 기록을 볼 수 있어요.</p>'
-    return body + '</div></section>'
+    years = sorted({month[:4] for month in months}, reverse=True)
+    for i, year in enumerate(years):
+        year_months = [month for month in months if month.startswith(year)]
+        body += f'<details class="archive-year"{" open" if i == 0 else ""}><summary><span>{year}년</span><span class="month-count">{len(year_months)}개월 기록</span></summary><div class="month-links">'
+        body += ''.join(f'<a href="/{currency.lower()}/{month}/">{ko_month(month)}</a>' for month in year_months)
+        body += '</div></details>'
+    if not months:
+        body += '<p class="empty">관측 자료가 쌓이면 월별 기록을 볼 수 있어요.</p>'
+    return body + '</section>'
 
 
 def month_page(currency: str, month: str, points) -> str:

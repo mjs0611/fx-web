@@ -393,6 +393,26 @@ class UpdateTests(unittest.TestCase):
 
 
 class PageTests(unittest.TestCase):
+    def test_month_archive_preserves_all_links_and_only_opens_latest_year(self):
+        data = history()
+        data['rates']['2023-12-29'] = next(iter(data['rates'].values())).copy()
+        body = fx.currency_page(data, 'USD')
+        doc = Document(body)
+        years = sorted({day[:4] for day, _ in fx.series(data, 'USD')}, reverse=True)
+        months = sorted({day[:7] for day, _ in fx.series(data, 'USD')}, reverse=True)
+        disclosures = doc.attrs('details')
+        self.assertEqual(len(disclosures), len(years))
+        self.assertIn('open', disclosures[0])
+        self.assertTrue(all('open' not in attrs for attrs in disclosures[1:]))
+        month_links = [a['href'] for a in doc.attrs('a') if a['href'].count('/') == 3]
+        self.assertEqual(month_links, [f'/usd/{month}/' for month in months])
+
+    def test_month_route_keeps_parent_currency_selected_and_company_return_link(self):
+        doc = Document(fx.shell('월별 기록', 'jpy/2024-02/', ''))
+        self.assertEqual(doc.attrs('a', **{'aria-current': 'page'}), [{'href': '/jpy/', 'aria-current': 'page'}])
+        self.assertEqual(len(doc.attrs('a', href='https://ditoaxis.com/#products')), 1)
+        self.assertEqual(doc.attrs('main', id='main')[0].get('tabindex'), '-1')
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
