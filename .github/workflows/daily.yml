@@ -6,6 +6,11 @@ on:
     - cron: '30 15 * * *'
     - cron: '30 18 * * *'
   workflow_dispatch:
+    inputs:
+      refresh_rates:
+        description: Fetch new ECB observations (disable for a presentation-only deployment)
+        type: boolean
+        default: true
 
 permissions: {}
 
@@ -33,11 +38,18 @@ jobs:
       - name: Restore persisted history and site
         run: bash ops/publish.sh restore
       - name: Fetch observed rates (including recovery after missed runs)
+        if: github.event_name != 'workflow_dispatch' || inputs.refresh_rates
         run: python3 fx.py update --history site/data/history.json
       - name: Rebuild all pages
         env:
           ADSENSE_SLOT: ${{ vars.ADSENSE_SLOT }}
-        run: python3 fx.py build --history site/data/history.json --output site
+          UI_ONLY: ${{ github.event_name == 'workflow_dispatch' && !inputs.refresh_rates }}
+        run: |
+          if [ "$UI_ONLY" = true ]; then
+            python3 ops/rebuild_ui.py
+          else
+            python3 fx.py build --history site/data/history.json --output site
+          fi
       - name: Persist only changed history or pages
         run: bash ops/publish.sh publish
       # Upload even when unchanged: a retry can recover a failed Pages deployment.
