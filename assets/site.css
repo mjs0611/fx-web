@@ -92,11 +92,11 @@ input, select { min-width: 0; width: 100%; border: 1px solid #929baa; border-rad
 .converter h1, .converter h2 { font-size: clamp(1.5rem, 3vw, 1.75rem); line-height: 1.3; letter-spacing: -.03em; margin: 0 0 4px; }
 .converter > .muted:first-of-type { margin-top: 0; }
 .converter label { font-weight: 600; color: var(--ink); }
-.converter input, .converter select { min-height: 52px; border-radius: var(--dx-radius, 12px); font-size: 1.125rem; padding: 10px 14px; }
+.converter input, .converter select { min-height: 56px; border-radius: var(--dx-radius, 12px); font-size: 1.125rem; padding: 10px 14px; }
 .swap { margin-top: 12px; border-radius: var(--dx-radius, 12px); background: white; color: var(--dx-blue, #1B64DA); font-weight: 600; border-color: var(--rule); }
 .result { margin-top: 12px; background: white; border-radius: var(--dx-radius, 12px); padding: 16px 18px; }
 .result-label { display: block; color: var(--muted); font-size: 0.9375rem; }
-output { display: block; font-size: 2rem; line-height: 1.25; font-weight: 750; letter-spacing: -.02em; overflow-wrap: anywhere; }
+output { display: block; font-size: 2rem; line-height: 1.25; font-weight: 800; letter-spacing: -.02em; overflow-wrap: anywhere; }
 .converter-empty { margin-top: 24px; }
 .today { margin-top: 0; border-top: 0; padding-top: 0; }
 .today h2 { margin: 0 0 4px; }
