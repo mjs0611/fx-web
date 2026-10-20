@@ -30,6 +30,8 @@ CURRENCIES = {
     "GBP": ("파운드", 1, "파운드"),
 }
 QUOTES = {"KRW", "USD", "JPY", "CNY", "GBP"}
+TOPIC = {"달러": "는", "엔": "은", "유로": "는", "위안": "은", "파운드": "는"}
+TOWARD = {"달러": "로", "엔": "으로", "유로": "로", "위안": "으로", "파운드": "로"}
 ECB_URL = "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html"
 TERMS_URL = "https://www.ecb.europa.eu/services/using-our-site/disclaimer/html/index.en.html"
 
@@ -242,8 +244,7 @@ def delta_cell(value) -> str:
         return '<span class="muted">비교 자료 대기</span>'
     direction = "up" if value["delta"] > 0 else "down" if value["delta"] < 0 else "flat"
     return (f'<span class="{direction}">{number(value["percent"], True)}%</span>'
-            f'<small>{number(value["delta"], True)}원</small>'
-            f'<small>{e(value["date"])} 기준</small>')
+            f'<small>{number(value["delta"], True)}원</small>')
 
 
 def chart(points, label: str) -> str:
@@ -276,23 +277,39 @@ def daily_table(points, unit: str) -> str:
     rows = ''.join(f'<tr data-date="{day}"><th scope="row"><time datetime="{day}">{day}</time></th>'
                    f'<td>{number(value)}원</td></tr>' for day, value in reversed(points))
     return (f'<table class="daily"><caption>{e(unit)} 기준 · 관측한 날짜만 표시해요</caption>'
-            '<thead><tr><th scope="col">관측일</th><th scope="col">원화 환율</th></tr></thead>'
+            '<thead><tr><th scope="col">기준일</th><th scope="col">원화 환율</th></tr></thead>'
             f'<tbody>{rows}</tbody></table>')
 
 
-def converter(currency: str, points) -> str:
-    if not points:
-        return '<section><h2>원화로 계산하기</h2><p class="empty">환율 자료가 들어오면 계산할 수 있어요.</p></section>'
-    day, value = points[-1]
-    unit = CURRENCIES[currency][2]
-    # JS gets the unrounded fraction, including JPY's divisor; input is real foreign units.
-    rate = value / CURRENCIES[currency][1]
-    return f'''<section class="converter" data-converter data-numerator="{rate.numerator}" data-denominator="{rate.denominator}" data-currency="{currency}">
-<h2>원화로 계산하기</h2><p class="muted">{ko_day(day)} 참고 환율로 계산해요.</p>
-<div class="converter-fields"><div><label for="amount">금액</label><input id="amount" type="number" inputmode="decimal" min="0" max="1000000000000" step="any" value="100" disabled></div>
-<div><label for="direction">계산 방향</label><select id="direction" disabled><option value="to-krw">{unit} → 원</option><option value="from-krw">원 → {unit}</option></select></div></div>
-<output id="conversion" aria-live="polite">계산기를 준비하고 있어요.</output>
-<p class="muted">수수료와 환율 우대는 포함하지 않아요. {'엔 금액을 입력해요. 100엔 표시 환율을 100으로 나눠 계산해요.' if currency == 'JPY' else ''}</p>
+def money_text(value: Fraction) -> str:
+    """Round only for display: whole won from 1,000원, otherwise two decimals."""
+    return f"{round(value):,}" if value >= 1000 else number(value)
+
+
+def converter(history: dict, selected: str, title_tag: str = "h2") -> str:
+    """Amount + currency select; result is a polite live status. JS-off: disabled inputs and the rate."""
+    latest = {c: series(history, c) for c in CURRENCIES}
+    available = [c for c in CURRENCIES if latest[c]]
+    if selected not in available:
+        return f'<section class="converter-empty"><{title_tag}>원화로 얼마예요?</{title_tag}><p class="empty">환율 자료가 들어오면 계산할 수 있어요.</p></section>'
+    day = latest[selected][-1][0]
+    options = ''
+    for c in available:
+        name, divisor, unit = CURRENCIES[c]
+        # JS gets the unrounded fraction, including JPY's divisor; input is real foreign units.
+        rate = latest[c][-1][1] / divisor
+        chosen = ' selected' if c == selected else ''
+        options += (f'<option value="{c}" data-numerator="{rate.numerator}" data-denominator="{rate.denominator}" '
+                    f'data-unit="{unit}" data-topic="{TOPIC[unit]}" data-toward="{TOWARD[unit]}"{chosen}>{name} {c}</option>')
+    name, divisor, unit = CURRENCIES[selected]
+    rate = latest[selected][-1][1] / divisor
+    return f'''<section class="converter" data-converter aria-labelledby="converter-title">
+<{title_tag} id="converter-title">원화로 얼마예요?</{title_tag}><p class="muted">기준일 {ko_day(day)} · 하루 한 번 바뀌어요</p>
+<div class="converter-fields"><div><label for="amount">바꿀 금액</label><input id="amount" type="number" inputmode="decimal" min="0" max="1000000000000" step="any" value="100" disabled></div>
+<div><label for="currency">통화</label><select id="currency" disabled>{options}</select></div></div>
+<button type="button" class="swap" id="direction" data-direction="to-krw" hidden>원화 → {unit}{TOWARD[unit]} 바꾸기</button>
+<div class="result" role="status" aria-live="polite"><span class="result-label" id="conversion-label">100{unit}{TOPIC[unit]} 약</span><output id="conversion" for="amount currency">{money_text(rate * 100)}원</output></div>
+<p class="muted">ECB 참고 환율로 계산했어요. 은행에서 실제로 바꿀 때는 수수료 때문에 달라요.</p>
 <noscript><p>계산기를 쓰려면 자바스크립트를 켜주세요. 1{unit} = {number(rate)}원이에요.</p></noscript></section>'''
 
 
@@ -300,22 +317,22 @@ ABOUT = f'''<article class="prose"><h1>환율을 모으는 기준</h1>
 <h2>하루 한 번 발표하는 참고 환율</h2><p><a href="https://frankfurter.dev/">Frankfurter</a>의 ECB 전용 API에서
 <a href="{ECB_URL}">유럽중앙은행(ECB) 기준 환율</a>을 받아요. 은행에서 환전할 때 적용하는 환율이나 실시간 시세가 아니에요.
 ECB는 보통 영업일 16:00 중부유럽 시간 무렵에 발표해요. 발표와 수집 사이에는 차이가 있을 수 있어요.</p>
-<h2>원화 환율 계산</h2><p>원자료는 1EUR당 각 통화 금액이에요. 같은 관측일의 EUR→KRW를 EUR→외화로 나누면 외화 1단위의 원화 금액이 나와요.
+<h2>원화 환율 계산</h2><p>원자료는 1EUR당 각 통화 금액이에요. 같은 기준일(ECB 발표일)의 EUR→KRW를 EUR→외화로 나누면 외화 1단위의 원화 금액이 나와요.
 엔화는 여기에 100을 곱해 100엔 기준으로 보여줘요. 유로는 EUR→KRW 값을 그대로 사용해요.</p>
 <p>원자료의 소수 자릿수를 보존하고, 계산 중간에는 표시용 반올림을 하지 않아요. 표에서는 소수 둘째 자리까지 보여줘요.
 원화 환산·증감률·월평균·그래프는 운영자가 계산한 가공 정보이며 ECB가 직접 발표한 값이 아니에요.</p>
 <h2>빈 날짜와 비교 기준</h2><p>2015년부터 관측 자료를 모아요. 주말·휴일과 자료가 빠진 날짜에는 값을 만들거나 앞선 값을 채우지 않아요.
-최신 환율에도 실제 관측일을 붙여요. 자료가 없는 날짜를 휴일이라고 단정하지 않아요.</p>
-<p>전일 비교는 직전 관측일 기준이에요. 1주 전은 7일 전, 1년 전은 전년 같은 날짜를 기준으로 해요(2월 29일은 전년 2월 28일).
+최신 환율에도 실제 기준일을 붙여요. 자료가 없는 날짜를 휴일이라고 단정하지 않아요.</p>
+<p>"전 기준일보다"는 바로 앞 기준일과 비교해요. 1주 전은 7일 전, 1년 전은 전년 같은 날짜를 기준으로 해요(2월 29일은 전년 2월 28일).
 그날 관측이 없으면 그 이전 7일 안의 가장 가까운 관측을 쓰고, 실제 비교일을 표시해요. 이 범위에도 자료가 없으면 비교를 보류해요.</p>
 <h2>월평균과 그래프</h2><p>월평균은 해당 월에 수집한 관측값의 산술평균이에요. 달력의 모든 날짜로 나누지 않아요.
-최저·최고가 여러 번이면 첫 관측일을 표시해요. 월이 지났어도 원자료가 빠질 수 있어 관측 수와 수집 범위를 함께 보여줘요.
-그래프의 점은 실제 관측이며 빈 날짜 사이를 선으로 잇지 않아요. 1개월·3개월·1년 범위는 마지막 관측일부터 30일·90일·365일이에요.</p>
+최저·최고가 여러 번이면 첫 기준일을 표시해요. 월이 지났어도 원자료가 빠질 수 있어 관측 수와 수집 범위를 함께 보여줘요.
+그래프의 점은 실제 관측이며 빈 날짜 사이를 선으로 잇지 않아요. 1개월·3개월·1년 범위는 마지막 기준일부터 30일·90일·365일이에요.</p>
 <h2>출처와 재사용</h2><p>자료 제공: Frankfurter / European Central Bank. 원자료는 <a href="{ECB_URL}">ECB 웹사이트에서 무료로 받을 수 있어요</a>.
 <a href="{TERMS_URL}">ECB 재사용 조건과 면책 안내</a>에 따라 출처를 밝히고, 원자료를 정확히 전달하며, 가공 여부를 표시해요.
 정보를 유료 문서에 넣어 재배포한다면 구매 전과 자료 이용 때마다 원자료가 무료라는 점을 알려야 해요. 상업적 링크는 ECB 페이지를 프레임 안에 넣지 않고 열어야 해요.</p>
 <h2>운영과 문의</h2><p>운영자는 디토엑시스예요. 자료에 문제가 있으면 <a href="mailto:help.ditoaxis@gmail.com">help.ditoaxis@gmail.com</a>으로 알려주세요.</p>
-<p>이 사이트는 정보 제공용입니다. 실제 거래 조건은 이용하는 금융기관에서 확인해야 합니다.</p></article>'''
+<p>정보를 보여 드리는 서비스예요. 실제 거래 조건은 이용하는 금융기관에서 확인해 주세요.</p></article>'''
 
 PRIVACY = '''<article class="prose"><h1>개인정보처리방침</h1>
 <p>운영자: 디토엑시스 · 문의: <a href="mailto:help.ditoaxis@gmail.com">help.ditoaxis@gmail.com</a></p>
@@ -335,8 +352,8 @@ PRIVACY = '''<article class="prose"><h1>개인정보처리방침</h1>
 
 def shell(title: str, path: str, body: str, slot="", noindex=False) -> str:
     canonical = SITE_URL + "/" + path
-    description = title + ". ECB 참고 환율의 실제 관측일과 원화 환산 기록을 확인해요."
-    links = ''.join(f'<a href="/{c.lower()}/"'+ (' aria-current="page"' if path.startswith(c.lower()+'/') else '') + f'>{c}</a>' for c in CURRENCIES)
+    description = title + ". ECB 참고 환율의 실제 기준일과 원화 환산 기록을 확인해요."
+    links = ''.join(f'<a href="/{c.lower()}/"'+ (' aria-current="page"' if path.startswith(c.lower()+'/') else '') + f'>{c}<span>{CURRENCIES[c][2]}</span></a>' for c in CURRENCIES)
     ad = (f'<aside class="ad-slot" aria-label="광고"><p>광고</p><ins class="adsbygoogle" '
           f'data-ad-client="{CLIENT}" data-ad-slot="{e(slot)}" data-ad-format="auto" '
           'data-full-width-responsive="true"></ins></aside>'
@@ -353,31 +370,50 @@ def shell(title: str, path: str, body: str, slot="", noindex=False) -> str:
 <meta name="twitter:image" content="{SITE_URL}/assets/og.png">
 {'<meta name="robots" content="noindex,follow">' if noindex else ''}
 <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="/assets/site.css"><script src="/assets/site.js" defer></script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={CLIENT}" crossorigin="anonymous"></script>
 <script defer src="https://ditoaxis.com/m.js"></script>
-</head><body><a class="skip" href="#main">본문으로 이동</a><div class="wrap">
-<nav class="service-family" aria-label="디토엑시스"><a href="https://ditoaxis.com/#products"><span class="axis-mark" aria-hidden="true">+</span>디토엑시스 서비스<span aria-hidden="true">↗</span></a></nav>
+</head><body><a class="skip" href="#main">본문으로 이동</a><nav class="dx-bar" aria-label="디토엑시스"><div class="dx-bar__in"><a class="dx-bar__home" href="https://ditoaxis.com/" aria-label="ditoaxis 디토엑시스 홈"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 2v20M2 12h20M5 5l14 14"/></svg><span>ditoaxis</span><span class="dx-dot" aria-hidden="true"></span></a><details class="dx-more"><summary>디토엑시스 다른 서비스<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg></summary><div class="dx-more__panel"><p class="dx-more__title" id="dx-more-title">디토엑시스가 만든 서비스</p><ul class="dx-more__list" aria-labelledby="dx-more-title"><li><a href="https://dito.ditoaxis.com/"><span class="dx-more__name">Dito</span><span class="dx-more__desc">살 물건 비교, 할인, 장바구니 시세를 한곳에서 봐요</span></a></li><li><a href="https://exit.ditoaxis.com/"><span class="dx-more__name">퇴사 정산서</span><span class="dx-more__desc">퇴직금과 남은 연차수당을 미리 계산해요</span></a></li><li><a href="https://fx.ditoaxis.com/" aria-current="page"><span class="dx-more__name">환율 기록</span><span class="dx-more__desc">오늘 환율을 보고 원화로 바로 계산해요</span></a></li><li><a href="https://kospi.ditoaxis.com/"><span class="dx-more__name">밤사이 코스피</span><span class="dx-more__desc">어젯밤 미국 증시와 오늘 코스피를 나란히 봐요</span></a></li><li><a href="https://donbti.ditoaxis.com/"><span class="dx-more__name">지갑사주</span><span class="dx-more__desc">12문항으로 내 소비 유형을 알아봐요</span></a></li><li><a href="https://menu.ditoaxis.com/"><span class="dx-more__name">랜덤식탁</span><span class="dx-more__desc">오늘 먹을 메뉴를 골라 드려요</span></a></li><li><a href="https://giun.ditoaxis.com/"><span class="dx-more__name">오행 기운</span><span class="dx-more__desc">다섯 가지 기운을 만지며 잠깐 쉬어 가요</span></a></li></ul><a class="dx-more__all" href="https://ditoaxis.com/#products">디토엑시스 홈에서 전체 보기</a></div></details></div></nav><div class="wrap">
 <header><a class="brand" href="/">환율 기록<span>원화로 읽는 세계 통화</span></a><a href="/about/">집계 기준</a></header>
 <nav class="currencies" aria-label="통화 선택">{links}</nav><main id="main" tabindex="-1">{body}{ad}</main>
 <footer><p>ECB 참고 환율 · 하루 한 번 발표 · 은행 환율·실시간 시세와 달라요.</p>
 <p>출처: <a href="https://frankfurter.dev/">Frankfurter</a> · <a href="{ECB_URL}">ECB</a> · 원화 환산·통계는 가공 정보예요.</p>
-<nav aria-label="사이트 안내"><a href="/about/">집계 기준과 재사용 조건</a><a href="/privacy/">개인정보처리방침</a></nav></footer></div></body></html>'''
+<nav aria-label="사이트 안내"><a href="/about/">집계 기준과 재사용 조건</a><a href="/privacy/">개인정보처리방침</a></nav><div class="dx-footer dx-footer--flush"><div class="dx-footer__in"><a class="dx-footer__brand" href="https://ditoaxis.com/" aria-label="ditoaxis 디토엑시스 홈"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 2v20M2 12h20M5 5l14 14"/></svg><span>ditoaxis</span></a><ul class="dx-footer__op" aria-label="운영 정보"><li>디토엑시스</li><li>대표 모준승</li><li>사업자 221-22-95805</li><li><a href="mailto:help.ditoaxis@gmail.com">문의 help.ditoaxis@gmail.com</a></li></ul><ul class="dx-footer__links"><li><a href="/privacy/">개인정보처리방침</a></li><li><a href="https://www.ftc.go.kr/www/selectBizCommList.do?key=254">사업자정보 확인</a></li><li><a href="https://ditoaxis.com/#products">디토엑시스 다른 서비스</a></li></ul><p class="dx-footer__copy">© 2026 디토엑시스</p></div></div></footer></div><script>document.addEventListener('click',e=>{{document.querySelectorAll('.dx-more[open]').forEach(d=>{{if(!d.contains(e.target))d.open=false}})}});document.addEventListener('keydown',e=>{{if(e.key!=='Escape')return;const d=document.querySelector('.dx-more[open]');if(d){{d.open=false;d.querySelector('summary').focus()}}}});</script></body></html>'''
+
+
+def compare_dates_line(history: dict, latest) -> str:
+    """One line under the table instead of a date in every cell."""
+    for c in CURRENCIES:
+        points = series(history, c)
+        if points and points[-1][0] == latest:
+            parts = []
+            for period, label in [("day", "전 기준일"), ("week", "1주 전"), ("year", "1년 전")]:
+                found = comparison(points, period)
+                if found:
+                    day = iso(found["date"])
+                    text = f"{day.month}월 {day.day}일" if day.year == iso(latest).year else f"{day.year}년 {day.month}월 {day.day}일"
+                    parts.append(f'{label} <time datetime="{found["date"]}">{text}</time>')
+            return ('<p class="muted compare-dates">비교 날짜: ' + ' · '.join(parts) + '</p>') if parts else ''
+    return ''
 
 
 def home(history: dict) -> str:
     latest = max(history["rates"], default=None)
-    body = '<div class="heading"><p class="eyebrow">ECB 참고 환율 · 원화</p><h1>오늘 확인하는 환율</h1>'
-    body += (f'<p>최근 관측일 <strong>{ko_day(latest)}</strong></p>' if latest else '<p class="empty">첫 관측 자료를 기다리고 있어요.</p>')
-    body += '<p class="muted">하루 한 번 발표하는 ECB 참고 환율이에요. 은행 환율·실시간 시세와 달라요.</p></div>'
-    body += '<table class="comparison"><caption>통화별 원화 환율과 변화 · 비교 기준일을 함께 확인해요</caption><thead><tr><th scope="col">통화</th><th scope="col">원화 환율</th><th scope="col">직전 관측일 대비</th><th scope="col">1주 전 대비</th><th scope="col">1년 전 대비</th></tr></thead><tbody>'
-    for c, (name, multiplier, unit) in CURRENCIES.items():
-        points = series(history, c)
-        has_current = points and points[-1][0] == latest
-        cells = ''.join(f'<td data-label="{label}">{delta_cell(comparison(points, period) if has_current else None)}</td>' for period, label in [('day', '직전 관측일 대비'), ('week', '1주 전 대비'), ('year', '1년 전 대비')])
-        value = number(points[-1][1]) + '원' if has_current else '자료 대기'
-        body += f'<tr><th scope="row"><a href="/{c.lower()}/"><span class="code">{c}</span>{name}</a><small>{multiplier}{unit} 기준</small></th><td data-label="원화 환율"><strong>{value}</strong></td>{cells}</tr>'
-    body += '</tbody></table><p class="muted">자료가 없는 날은 값을 채우지 않아요. 직전·주간·연간 비교 방법은 <a href="/about/">집계 기준</a>에서 확인할 수 있어요.</p>'
+    if not latest:
+        body = '<div class="heading"><p class="eyebrow">ECB 참고 환율 · 원화</p><h1>원화로 얼마예요?</h1><p class="empty">첫 관측 자료를 기다리고 있어요.</p></div>'
+    else:
+        body = '<div class="fx-top">' + converter(history, "USD", "h1")
+        body += f'<section class="today" aria-labelledby="today-title"><h2 id="today-title">오늘 환율</h2><p class="muted">기준일 <strong>{ko_day(latest)}</strong> · ECB 참고 환율이에요. 은행 환율·실시간 시세와 달라요.</p>'
+        body += '<table class="comparison"><caption class="dx-sr">통화별 원화 환율과 변화</caption><thead><tr><th scope="col">통화</th><th scope="col">원화 환율</th><th scope="col">전 기준일보다</th><th scope="col">1주 전보다</th><th scope="col">1년 전보다</th></tr></thead><tbody>'
+        for c, (name, multiplier, unit) in CURRENCIES.items():
+            points = series(history, c)
+            has_current = points and points[-1][0] == latest
+            cells = ''.join(f'<td data-label="{label}">{delta_cell(comparison(points, period) if has_current else None)}</td>' for period, label in [('day', '전 기준일보다'), ('week', '1주 전보다'), ('year', '1년 전보다')])
+            value = number(points[-1][1]) + '원' if has_current else '자료 대기'
+            body += f'<tr><th scope="row"><a href="/{c.lower()}/"><span class="code">{c}</span>{name}</a><small>{multiplier}{unit} 기준</small></th><td data-label="원화 환율"><strong>{value}</strong></td>{cells}</tr>'
+        body += '</tbody></table>' + compare_dates_line(history, latest)
+        body += '<p class="muted">자료가 없는 날은 값을 채우지 않아요. 1주·1년 비교는 통화를 누르면 볼 수 있어요. 비교 방법은 <a href="/about/">집계 기준</a>에 있어요.</p></section></div>'
     body += '<section><h2>월별 환율 찾아보기</h2><p>통화를 선택하면 월별 평균·최저·최고와 매일의 기록을 볼 수 있어요.</p><div class="archive-links">'
     for c, (name, _, _) in CURRENCIES.items():
         months = sorted({d[:7] for d, _ in series(history, c)}, reverse=True)[:3]
@@ -389,16 +425,18 @@ def currency_page(history: dict, currency: str) -> str:
     name, multiplier, unit = CURRENCIES[currency]
     points = series(history, currency)
     body = f'<div class="heading"><p class="eyebrow">{currency} / KRW · {multiplier}{unit} 기준</p><h1>{name} 환율</h1>'
-    body += (f'<p class="rate">{number(points[-1][1])}<span>원</span></p><p>최근 관측일 <strong>{ko_day(points[-1][0])}</strong></p>'
+    body += (f'<p class="rate">{number(points[-1][1])}<span>원</span></p><p>기준일 <strong>{ko_day(points[-1][0])}</strong></p>'
              if points else '<p class="empty">첫 관측 자료를 기다리고 있어요.</p>')
-    body += '<p class="muted">ECB 참고 환율이에요. 실제 환전 금액은 은행에서 확인해주세요.</p></div>'
+    body += '<p class="muted">ECB 참고 환율이에요. 실제 환전 금액은 은행에서 확인해 주세요.</p></div>'
+    if points:
+        body += converter(history, currency)
     body += '<div class="detail-grid"><section class="trend"><h2>환율 흐름</h2>'
     body += '<div class="range-buttons" role="group" aria-label="그래프 기간" hidden>'
     body += ''.join(f'<button type="button" data-range="{days}" aria-pressed="{str(days == 90).lower()}">{label}</button>' for days, label in [(30, '1개월'), (90, '3개월'), (365, '1년'), (0, '전체')]) + '</div>'
     recent = [p for p in points if iso(p[0]) >= iso(points[-1][0]) - timedelta(days=89)] if points else []
     body += f'<div id="trend-chart">{chart(recent, name + " 원화 환율")}</div>'
     body += '<p class="muted" id="chart-summary" aria-live="polite">점은 실제 관측이에요. 빈 날짜는 선으로 잇지 않아요.</p></section>'
-    body += converter(currency, points) + '</div>'
+    body += '</div>'
     if points:
         payload = json.dumps([[d, float(v)] for d, v in points], separators=(',', ':'))
         body += f'<script type="application/json" id="chart-data">{payload}</script>'

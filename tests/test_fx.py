@@ -150,10 +150,19 @@ class ArithmeticTests(unittest.TestCase):
         self.assertEqual(len(chart.attrs("line")), 1)
 
     def test_converter_uses_actual_yen_units_and_unrounded_fraction(self):
-        html = fx.converter("JPY", [("2024-02-22", Fraction(14321234, 1623456) * 100)])
-        attrs = Document(html).attrs("section", **{"data-currency": "JPY"})[0]
+        data = {"rates": {"2024-02-22": {"KRW": "1432.1234", "JPY": "162.3456", "USD": "1.08"}}}
+        html = fx.converter(data, "JPY", "h1")
+        doc = Document(html)
+        attrs = doc.attrs("option", value="JPY")[0]
+        self.assertIn("selected", attrs)
         self.assertEqual(Fraction(int(attrs["data-numerator"]), int(attrs["data-denominator"])),
                          Fraction(14321234, 1623456))
+        self.assertEqual([a["value"] for a in doc.attrs("option")], ["USD", "JPY", "EUR"])
+        self.assertEqual(doc.attrs("div", role="status")[0]["aria-live"], "polite")
+        self.assertEqual(len(doc.attrs("h1", id="converter-title")), 1)
+        self.assertIn("100엔은 약", "".join(doc.text))
+        self.assertIn("원화 → 엔으로 바꾸기", "".join(doc.text))
+        self.assertIn("882.14원", "".join(doc.text))
 
 
 class ValidationTests(unittest.TestCase):
@@ -412,8 +421,13 @@ class PageTests(unittest.TestCase):
 
     def test_month_route_keeps_parent_currency_selected_and_company_return_link(self):
         doc = Document(fx.shell('월별 기록', 'jpy/2024-02/', ''))
-        self.assertEqual(doc.attrs('a', **{'aria-current': 'page'}), [{'href': '/jpy/', 'aria-current': 'page'}])
-        self.assertEqual(len(doc.attrs('a', href='https://ditoaxis.com/#products')), 1)
+        current = [a for a in doc.attrs('a', **{'aria-current': 'page'}) if a['href'].startswith('/')]
+        self.assertEqual(current, [{'href': '/jpy/', 'aria-current': 'page'}])
+        # Common header marks this service; header menu + footer each link back to the company list.
+        self.assertEqual(doc.attrs('a', **{'aria-current': 'page', 'href': 'https://fx.ditoaxis.com/'}), [{'href': 'https://fx.ditoaxis.com/', 'aria-current': 'page'}])
+        self.assertEqual(len(doc.attrs('a', href='https://ditoaxis.com/#products')), 2)
+        self.assertEqual(len(doc.attrs('nav', **{'class': 'dx-bar'})), 1)
+        self.assertNotIn('service-family', fx.shell('월별 기록', 'jpy/2024-02/', ''))
         self.assertEqual(doc.attrs('main', id='main')[0].get('tabindex'), '-1')
 
     def setUp(self):
@@ -492,7 +506,7 @@ class PageTests(unittest.TestCase):
         for path in self.output.rglob("*.html"):
             doc = Document(path.read_text())
             self.assertEqual(doc.attrs("link", rel="icon")[0]["href"], "/assets/favicon.svg")
-            self.assertEqual(doc.attrs("link", rel="stylesheet")[0]["href"], "/assets/site.css")
+            self.assertEqual(doc.attrs("link", rel="stylesheet")[-1]["href"], "/assets/site.css")
             for attrs in doc.attrs("link") + doc.attrs("script"):
                 url = attrs.get("href", attrs.get("src", ""))
                 if url.startswith("/"):
