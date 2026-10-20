@@ -26,13 +26,15 @@ class Element {
   fire(event) { this.listeners[event]({ target: this }); }
   closest() { return this; }
 }
-function mount({ numerator = '9', denominator = '1', currency = 'JPY', points } = {}) {
+function mount({ numerator = '9', denominator = '1', unit = '엔', topic = '은', toward = '으로', points } = {}) {
   const input = new Element('input'); input.value = '100';
-  const direction = new Element('select'); direction.value = 'to-krw';
+  const option = new Element('option'); option.dataset = { numerator, denominator, unit, topic, toward };
+  const currency = new Element('select'); currency.options = [option]; currency.selectedIndex = 0;
+  const swap = new Element('button'); swap.dataset = { direction: 'to-krw' };
+  const label = new Element('span');
   const output = new Element('output');
   const converter = new Element();
-  converter.dataset = { numerator, denominator, currency };
-  converter.querySelector = (selector) => ({ '#amount': input, '#direction': direction, output })[selector];
+  converter.querySelector = (selector) => ({ '#amount': input, '#currency': currency, '#direction': swap, '#conversion-label': label, output })[selector];
   const data = new Element('script'); data.textContent = JSON.stringify(points);
   const chart = new Element();
   const summary = new Element();
@@ -47,8 +49,8 @@ function mount({ numerator = '9', denominator = '1', currency = 'JPY', points } 
     createElement: tag => new Element(tag),
     createElementNS: (_, tag) => new Element(tag),
   };
-  vm.runInNewContext(source, { document, Intl, Number, Date });
-  return { input, direction, output, controls, buttons, chart, summary };
+  vm.runInNewContext(source, { document, Intl, Number, Date, Math });
+  return { input, currency, option, swap, label, output, controls, buttons, chart, summary };
 }
 function descendants(root, tag) {
   return root.children.flatMap(child => [...(child.tagName === tag ? [child] : []), ...descendants(child, tag)]);
@@ -57,23 +59,41 @@ function descendants(root, tag) {
 test('JPY input is actual yen, with unrounded per-yen fraction', () => {
   const page = mount({ numerator: '2701', denominator: '300' });
   assert.equal(page.output.textContent, '900.33원');
+  assert.equal(page.label.textContent, '100엔은 약');
   assert.equal(page.input.disabled, false);
+  assert.equal(page.currency.disabled, false);
+  assert.equal(page.swap.hidden, false);
   page.input.value = '1'; page.input.fire('input');
   assert.equal(page.output.textContent, '9.00원');
-  page.direction.value = 'from-krw'; page.direction.fire('change');
-  assert.equal(page.output.textContent, '0.11 JPY');
+  page.swap.listeners.click();
+  assert.equal(page.output.textContent, '0.11엔');
+  assert.equal(page.label.textContent, '1원은 약');
+  assert.equal(page.swap.textContent, '엔 → 원화로 바꾸기');
+});
+test('large KRW results show whole won; default USD 100 reads like the mockup', () => {
+  const page = mount({ numerator: '132949', denominator: '100', unit: '달러', topic: '는', toward: '로' });
+  assert.equal(page.output.textContent, '132,949원');
+  assert.equal(page.label.textContent, '100달러는 약');
+  assert.equal(page.swap.textContent, '원화 → 달러로 바꾸기');
+});
+test('currency select switches the rate and unit', () => {
+  const page = mount({ numerator: '1400', unit: '달러', topic: '는', toward: '로' });
+  const gbp = { dataset: { numerator: '1800', denominator: '1', unit: '파운드', topic: '는' } };
+  page.currency.options.push(gbp); page.currency.selectedIndex = 1; page.currency.fire('change');
+  assert.equal(page.output.textContent, '180,000원');
+  assert.equal(page.label.textContent, '100파운드는 약');
 });
 test('converter updates direction, accepts zero, rejects empty/negative/nonfinite/too-large amounts', () => {
-  const page = mount({ numerator: '1400', currency: 'USD' });
-  page.input.value = '2800'; page.direction.value = 'from-krw'; page.direction.fire('change');
-  assert.equal(page.output.textContent, '2.00 USD');
+  const page = mount({ numerator: '1400', unit: '달러', topic: '는', toward: '로' });
+  page.input.value = '2800'; page.swap.listeners.click();
+  assert.equal(page.output.textContent, '2.00달러');
   for (const bad of ['', ' ', '-1', 'Infinity', 'NaN', '1000000000001']) {
     page.input.value = bad; page.input.fire('input');
     assert.equal(page.input.attrs['aria-invalid'], 'true');
-    assert.equal(page.output.textContent, '0부터 1조까지 금액을 입력해주세요.');
+    assert.equal(page.output.textContent, '0부터 1조까지 금액을 입력해 주세요.');
   }
   page.input.value = '0'; page.input.fire('input');
-  assert.equal(page.output.textContent, '0.00 USD');
+  assert.equal(page.output.textContent, '0.00달러');
   assert.equal(page.input.attrs['aria-invalid'], undefined);
 });
 test('range selection keeps only observations and never bridges weekends or holidays', () => {

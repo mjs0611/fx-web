@@ -1,29 +1,49 @@
 /* All conversions stay in the browser. Only observed dates enter the chart. */
 (function () {
   "use strict";
-  const decimal = (value) => new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2, minimumFractionDigits: 2 }).format(value);
+  const fmt = (value, digits) => new Intl.NumberFormat("ko-KR", { maximumFractionDigits: digits, minimumFractionDigits: digits }).format(value);
+  const decimal = (value) => fmt(value, 2);
+  const won = (value) => (value >= 1000 ? fmt(Math.round(value), 0) : decimal(value));
+  const plain = (value) => new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 }).format(value);
   const converter = document.querySelector("[data-converter]");
   if (converter) {
     const amount = converter.querySelector("#amount");
-    const direction = converter.querySelector("#direction");
+    const currency = converter.querySelector("#currency");
+    const swap = converter.querySelector("#direction");
+    const label = converter.querySelector("#conversion-label");
     const output = converter.querySelector("output");
-    const rate = Number(converter.dataset.numerator) / Number(converter.dataset.denominator);
+    const option = () => currency.options[currency.selectedIndex];
     function convert() {
+      const picked = option();
+      const unit = picked.dataset.unit;
+      const toKRW = swap.dataset.direction !== "from-krw";
+      swap.textContent = toKRW ? `원화 → ${unit}${picked.dataset.toward || "로"} 바꾸기` : `${unit} → 원화로 바꾸기`;
       const input = Number(amount.value);
       if (amount.value.trim() === "" || !Number.isFinite(input) || input < 0 || input > 1e12) {
-        output.textContent = "0부터 1조까지 금액을 입력해주세요.";
+        label.textContent = "";
+        output.textContent = "0부터 1조까지 금액을 입력해 주세요.";
         amount.setAttribute("aria-invalid", "true");
         return;
       }
       amount.removeAttribute("aria-invalid");
-      const toKRW = direction.value === "to-krw";
-      const result = toKRW ? input * rate : input / rate;
-      output.textContent = `${decimal(result)}${toKRW ? "원" : ` ${converter.dataset.currency}`}`;
+      const rate = Number(picked.dataset.numerator) / Number(picked.dataset.denominator);
+      if (toKRW) {
+        label.textContent = `${plain(input)}${unit}${picked.dataset.topic} 약`;
+        output.textContent = `${won(input * rate)}원`;
+      } else {
+        label.textContent = `${plain(input)}원은 약`;
+        output.textContent = `${decimal(input / rate)}${unit}`;
+      }
     }
     amount.disabled = false;
-    direction.disabled = false;
+    currency.disabled = false;
+    swap.hidden = false;
     amount.addEventListener("input", convert);
-    direction.addEventListener("change", convert);
+    currency.addEventListener("change", convert);
+    swap.addEventListener("click", () => {
+      swap.dataset.direction = swap.dataset.direction === "from-krw" ? "to-krw" : "from-krw";
+      convert();
+    });
     convert();
   }
   const data = document.getElementById("chart-data");
