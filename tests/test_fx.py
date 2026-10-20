@@ -454,7 +454,7 @@ class PageTests(unittest.TestCase):
                 self.assertTrue(title.strip())
                 titles.add(title)
                 self.assertEqual(doc.head_titles, 1)
-                self.assertIn(title + " | 환율 기록", doc.text)
+                self.assertIn(title + " | 환율 신호등", doc.text)
                 self.assertTrue(doc.attrs("meta", name="description")[0]["content"])
                 image = fx.SITE_URL + "/assets/og.png"
                 for prop, value in (("og:image", image), ("og:image:width", "1200"),
