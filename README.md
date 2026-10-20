@@ -1,4 +1,4 @@
-# 환율 기록 · web edition
+# 환율 신호등 · web edition
 
 ## 기존 게시 데이터로 UI만 배포하기
 
