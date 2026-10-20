@@ -44,6 +44,19 @@ class UiBuildTests(unittest.TestCase):
                 ui.rebuild(site)
             build.assert_not_called()
 
+    def test_adds_share_image_to_an_existing_published_site(self):
+        with tempfile.TemporaryDirectory() as root, patch.object(fx, 'fetch_rows') as fetch:
+            site = self.site(root)
+            for asset in ('assets/og.png',):
+                (site / asset).unlink()
+            before = ui.preserved_files(site)
+            with patch.dict(ui.os.environ, {'ADSENSE_SLOT': ''}):
+                ui.rebuild(site)
+            self.assertEqual(ui.preserved_files(site), before)
+            for asset in ('assets/og.png',):
+                self.assertEqual((site / asset).read_bytes(), (fx.ROOT / asset).read_bytes())
+            fetch.assert_not_called()
+
     def test_data_or_financial_content_change_stops_publication(self):
         for mutation in ['data', 'content']:
             with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as root:

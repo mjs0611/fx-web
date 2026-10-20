@@ -12,7 +12,8 @@ import fx
 def preserved_files(site):
     return {str(p.relative_to(site)): hashlib.sha256(p.read_bytes()).hexdigest()
             for p in site.rglob('*') if p.is_file() and '.git' not in p.relative_to(site).parts
-            and p.suffix != '.html' and str(p.relative_to(site)) not in ('assets/site.css', 'assets/site.js')}
+            and p.suffix != '.html' and str(p.relative_to(site)) not in
+            ('assets/site.css', 'assets/site.js', 'assets/og.png')}
 
 
 def financial_content(site):

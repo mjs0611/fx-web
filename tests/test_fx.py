@@ -442,6 +442,17 @@ class PageTests(unittest.TestCase):
                 self.assertEqual(doc.head_titles, 1)
                 self.assertIn(title + " | 환율 기록", doc.text)
                 self.assertTrue(doc.attrs("meta", name="description")[0]["content"])
+                image = fx.SITE_URL + "/assets/og.png"
+                for prop, value in (("og:image", image), ("og:image:width", "1200"),
+                                    ("og:image:height", "630"), ("og:image:type", "image/png")):
+                    self.assertEqual(doc.attrs("meta", property=prop),
+                                     [{"property": prop, "content": value}])
+                self.assertTrue(doc.attrs("meta", property="og:image:alt")[0]["content"])
+                for name, value in (("twitter:card", "summary_large_image"),
+                                    ("twitter:title", title), ("twitter:image", image),
+                                    ("twitter:description", doc.attrs("meta", name="description")[0]["content"])):
+                    self.assertEqual(doc.attrs("meta", name=name),
+                                     [{"name": name, "content": value}])
         self.assertEqual(len(titles), len(files))
         root = ET.fromstring((self.output / "sitemap.xml").read_text())
         urls = [node.text for node in root.findall("{*}url/{*}loc")]
@@ -488,6 +499,12 @@ class PageTests(unittest.TestCase):
                     self.assertTrue((self.output / url.lstrip("/")).is_file(), url)
         icon = ET.fromstring((self.output / "assets" / "favicon.svg").read_text())
         self.assertEqual(icon.tag, "{http://www.w3.org/2000/svg}svg")
+        png = (self.output / "assets/og.png").read_bytes()
+        self.assertEqual(png, (fx.ROOT / "assets/og.png").read_bytes())
+        self.assertEqual(png[:8], b"\x89PNG\r\n\x1a\n")
+        self.assertEqual((int.from_bytes(png[16:20], "big"), int.from_bytes(png[20:24], "big")),
+                         (1200, 630))
+
 
     def test_month_pages_show_exact_observed_dates_only(self):
         fx.build(history(), self.output)

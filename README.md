@@ -2,7 +2,7 @@
 
 ## 기존 게시 데이터로 UI만 배포하기
 
-공식 `Daily ECB reference rates` 워크플로를 수동 실행할 때 `refresh_rates=false`로 지정하면 신규 환율 조회를 생략합니다. 최신 `gh-pages`의 사이트·이력을 복원한 뒤 `ops/rebuild_ui.py`가 기존 관측만으로 화면을 만듭니다. 이력이 없거나 비어 있으면 시작하지 않으며, 공개 데이터·도메인·비 UI 파일 해시와 금융 표·차트·금액·본문·광고 마크업이 달라지면 게시 전에 실패합니다. fixture로 운영 이력을 대체하지 않습니다.
+공식 `Daily ECB reference rates` 워크플로를 수동 실행할 때 `refresh_rates=false`로 지정하면 신규 환율 조회를 생략합니다. 최신 `gh-pages`의 사이트·이력을 복원한 뒤 `ops/rebuild_ui.py`가 기존 관측만으로 화면을 만듭니다. 이력이 없거나 비어 있으면 시작하지 않으며, 공개 데이터·도메인·비 UI 파일 해시와 금융 표·차트·금액·본문·광고 마크업이 달라지면 게시 전에 실패합니다. 갱신 가능한 비 HTML 파일은 `assets/site.css`, `assets/site.js`, `assets/og.png`뿐입니다. fixture로 운영 이력을 대체하지 않습니다.
 
 기존 스케줄과 `refresh_rates=true` 수동 실행은 종전 수집·배포 동작을 유지합니다. 권한과 Pages·DNS·광고 설정은 변경하지 않습니다.
 
@@ -75,6 +75,8 @@ JSON은 `schema: 1`, `base: EUR`, `provider: ECB`, `rates: { YYYY-MM-DD: { KRW: 
 `/`, `/<cur>/`, `/<cur>/<YYYY-MM>/`, `/about/`, `/privacy/`를 생성합니다. 통화 코드는 소문자입니다. 관측이 있는 달만 월별 페이지를 만듭니다. 각 페이지에 canonical·OG·설명을 넣고, 검색 가능한 페이지의 `sitemap.xml`, `robots.txt`, `CNAME`, `.nojekyll`을 생성합니다. `404.html`은 같은 스타일과 홈 링크를 제공하며 `noindex`로 지정하고 사이트맵에서는 제외합니다. 모든 페이지에서 로컬 SVG 파비콘을 사용합니다.
 
 모든 HTML(`404.html` 포함)의 head에는 AdSense 바로 옆에 공용 `<script defer src="https://ditoaxis.com/m.js"></script>`가 정확히 1개 있습니다. 분석 토큰은 회사 홈의 공용 로더에서만 관리합니다. 토큰이 비어 있거나 호스트가 `ditoaxis.com` 또는 그 하위 도메인이 아니면 비콘을 로드하지 않습니다.
+
+공유 미리보기는 모든 HTML의 공통 head에서 `https://fx.ditoaxis.com/assets/og.png`를 사용합니다. `assets/og.png`는 기존 흰 바탕·잉크색·구분선과 Apple SD Gothic Neo 글꼴로 만든 정적 1200×630 PNG입니다. OG 이미지 크기·유형·대체 텍스트와 Twitter 큰 이미지 카드의 제목·설명·이미지를 함께 선언합니다. 빌드할 때 이미지를 복사하므로 생성기에 이미지 패키지는 필요하지 않습니다.
 
 kospi-relay의 잉크색·비교표 스타일을 기준으로 흰 바탕, `#10172A` 잉크, `#DFE2E7` 구분선, 상승 적색·하락 청색을 사용합니다. 1120px 본문 비교표는 좁은 화면에서 통화별 비교 행으로 바뀝니다. 글자 크기 하한은 12px이며 폰트·차트 라이브러리를 외부에서 받지 않습니다. 정적 차트·표는 JavaScript 없이도 볼 수 있고, 계산기와 기간 버튼만 JavaScript로 활성화합니다.
 

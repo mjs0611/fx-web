@@ -347,6 +347,10 @@ def shell(title: str, path: str, body: str, slot="", noindex=False) -> str:
 <link rel="canonical" href="{e(canonical)}"><meta property="og:url" content="{e(canonical)}">
 <meta property="og:type" content="website"><meta property="og:locale" content="ko_KR"><meta property="og:site_name" content="환율 기록">
 <meta property="og:title" content="{e(title)}"><meta property="og:description" content="{e(description)}">
+<meta property="og:image" content="{SITE_URL}/assets/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/png"><meta property="og:image:alt" content="환율 기록 · 원화로 읽는 세계 통화 · 달러·엔화·유로·위안화·파운드">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{e(title)}"><meta name="twitter:description" content="{e(description)}">
+<meta name="twitter:image" content="{SITE_URL}/assets/og.png">
 {'<meta name="robots" content="noindex,follow">' if noindex else ''}
 <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
 <link rel="stylesheet" href="/assets/site.css"><script src="/assets/site.js" defer></script>
@@ -438,7 +442,7 @@ def build(history: dict, output: Path, slot="") -> int:
         if folder.exists():
             shutil.rmtree(folder)
     (output / "assets").mkdir(exist_ok=True)
-    for filename in ("site.css", "site.js", "favicon.svg"):
+    for filename in ("site.css", "site.js", "favicon.svg", "og.png"):
         shutil.copyfile(ROOT / "assets" / filename, output / "assets" / filename)
     pages = [("", "오늘 환율 · 달러·엔화·유로 원화 비교", home(history), not history["rates"]),
              ("about/", "집계 기준과 출처", ABOUT, False), ("privacy/", "개인정보처리방침", PRIVACY, False)]
