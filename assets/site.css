@@ -52,6 +52,10 @@ tbody th { font-weight: 500; }
 .comparison tbody a:hover { text-decoration: underline; }
 .comparison strong { font-size: 1.33333rem; font-weight: 650; white-space: nowrap; }
 .comparison .up, .comparison .down, .comparison .flat { font-size: 1.13333rem; }
+/* 신호등: 점 하나 + 문장. 색만으로 뜻을 전하지 않아요 */
+.signal { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 0.875rem; font-weight: 600; white-space: nowrap; }
+.signal i { width: 10px; height: 10px; border-radius: 50%; background: currentColor; flex: none; }
+.signal.flat { color: var(--muted); }
 .up { color: var(--up); }
 .down { color: var(--down); }
 .flat { color: var(--ink); }
@@ -311,9 +315,9 @@ footer nav { display: flex; flex-wrap: wrap; gap: 12px 24px; }
 .dx-footer__brand { display: inline-flex; align-items: center; gap: 6px; min-height: var(--dx-tap);
   color: var(--dx-ink); text-decoration: none; font-weight: 800; letter-spacing: -.04em; font-size: var(--dx-text-md); }
 .dx-footer__brand svg { width: 16px; height: 16px; }
-.dx-footer__op { margin: var(--dx-space-1) 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; align-items: center; }
+.dx-footer__op { margin: var(--dx-space-1) 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; align-items: center; column-gap: 16px; }
 .dx-footer__op li { display: inline-flex; align-items: center; }
-.dx-footer__op li:not(:last-child)::after { content: "·"; margin: 0 8px; color: var(--dx-muted); } /* 줄바꿈 때 점이 줄 끝에 남아 새 줄이 점으로 시작하지 않아요 */
+/* 구분점(·) 없이 간격으로만 나눠요. 모바일에서 줄이 바뀌어도 줄 끝에 점이 남지 않아요 */
 .dx-footer__op a, .dx-footer__links a {
   display: inline-flex; align-items: center; min-height: var(--dx-tap);
   color: var(--dx-ink-2); text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px;

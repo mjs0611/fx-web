@@ -17,7 +17,11 @@
       const picked = option();
       const unit = picked.dataset.unit;
       const toKRW = swap.dataset.direction !== "from-krw";
-      swap.textContent = toKRW ? `원화 → ${unit}${picked.dataset.toward || "로"} 바꾸기` : `${unit} → 원화로 바꾸기`;
+      // 받침이 있으면 을, 없으면 를 (엔을, 달러를)
+      const object = ((unit.charCodeAt(unit.length - 1) - 0xac00) % 28) ? "을" : "를";
+      swap.textContent = toKRW ? `원화를 ${unit}${picked.dataset.toward || "로"} 바꾸기` : `${unit}${object} 원화로 바꾸기`;
+      const amountLabel = converter.querySelector('label[for="amount"]');
+      if (amountLabel) amountLabel.textContent = toKRW ? `바꿀 금액(${unit})` : "바꿀 금액(원)";
       const input = Number(amount.value);
       if (amount.value.trim() === "" || !Number.isFinite(input) || input < 0 || input > 1e12) {
         label.textContent = "";
