@@ -68,13 +68,13 @@ test('JPY input is actual yen, with unrounded per-yen fraction', () => {
   page.swap.listeners.click();
   assert.equal(page.output.textContent, '0.11엔');
   assert.equal(page.label.textContent, '1원은 약');
-  assert.equal(page.swap.textContent, '엔 → 원화로 바꾸기');
+  assert.equal(page.swap.textContent, '엔을 원화로 바꾸기');
 });
 test('large KRW results show whole won; default USD 100 reads like the mockup', () => {
   const page = mount({ numerator: '132949', denominator: '100', unit: '달러', topic: '는', toward: '로' });
   assert.equal(page.output.textContent, '132,949원');
   assert.equal(page.label.textContent, '100달러는 약');
-  assert.equal(page.swap.textContent, '원화 → 달러로 바꾸기');
+  assert.equal(page.swap.textContent, '원화를 달러로 바꾸기');
 });
 test('currency select switches the rate and unit', () => {
   const page = mount({ numerator: '1400', unit: '달러', topic: '는', toward: '로' });

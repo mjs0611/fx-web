@@ -161,7 +161,7 @@ class ArithmeticTests(unittest.TestCase):
         self.assertEqual(doc.attrs("div", role="status")[0]["aria-live"], "polite")
         self.assertEqual(len(doc.attrs("h1", id="converter-title")), 1)
         self.assertIn("100엔은 약", "".join(doc.text))
-        self.assertIn("원화 → 엔으로 바꾸기", "".join(doc.text))
+        self.assertIn("원화를 엔으로 바꾸기", "".join(doc.text))
         self.assertIn("882.14원", "".join(doc.text))
 
 
