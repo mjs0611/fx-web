@@ -239,6 +239,30 @@ def ko_month(month: str) -> str:
     return f"{int(month[:4])}년 {int(month[5:])}월"
 
 
+def year_signal(points):
+    """신호등: 오늘 환율을 최근 1년 관측 평균과 비교해요. 관측이 120개 미만이면 신호 없음. 환전 권유가 아니에요."""
+    if not points:
+        return None
+    latest_day, latest = points[-1]
+    start = iso(latest_day) - timedelta(days=365)
+    window = [value for day, value in points if iso(day) > start]
+    if len(window) < 120:
+        return None
+    percent = (latest / (sum(window) / len(window)) - 1) * 100
+    state = "up" if percent >= 2 else "down" if percent <= -2 else "flat"
+    return {"percent": percent, "state": state, "count": len(window)}
+
+
+SIGNAL_TEXT = {"up": "1년 평균보다 높아요", "down": "1년 평균보다 낮아요", "flat": "1년 평균과 비슷해요"}
+
+
+def signal_cell(signal) -> str:
+    if signal is None:
+        return ''
+    return (f'<span class="signal {signal["state"]}"><i aria-hidden="true"></i>'
+            f'{SIGNAL_TEXT[signal["state"]]} ({number(signal["percent"], True)}%)</span>')
+
+
 def delta_cell(value) -> str:
     if value is None:
         return '<span class="muted">비교 자료 대기</span>'
@@ -411,9 +435,9 @@ def home(history: dict) -> str:
             has_current = points and points[-1][0] == latest
             cells = ''.join(f'<td data-label="{label}">{delta_cell(comparison(points, period) if has_current else None)}</td>' for period, label in [('day', '전 기준일보다'), ('week', '1주 전보다'), ('year', '1년 전보다')])
             value = number(points[-1][1]) + '원' if has_current else '자료 대기'
-            body += f'<tr><th scope="row"><a href="/{c.lower()}/"><span class="code">{c}</span>{name}</a><small>{multiplier}{unit} 기준</small></th><td data-label="원화 환율"><strong>{value}</strong></td>{cells}</tr>'
+            body += f'<tr><th scope="row"><a href="/{c.lower()}/"><span class="code">{c}</span>{name}</a><small>{multiplier}{unit} 기준</small>{signal_cell(year_signal(points) if has_current else None)}</th><td data-label="원화 환율"><strong>{value}</strong></td>{cells}</tr>'
         body += '</tbody></table>' + compare_dates_line(history, latest)
-        body += '<p class="muted">자료가 없는 날은 값을 채우지 않아요. 1주·1년 비교는 통화를 누르면 볼 수 있어요. 비교 방법은 <a href="/about/">집계 기준</a>에 있어요.</p></section></div>'
+        body += '<p class="muted">신호등은 오늘 환율을 최근 1년 관측 평균과 비교한 거예요. 환전을 권하는 뜻은 아니에요. 자료가 없는 날은 값을 채우지 않아요. 1주·1년 비교는 통화를 누르면 볼 수 있어요. 비교 방법은 <a href="/about/">집계 기준</a>에 있어요.</p></section></div>'
     body += '<section><h2>월별 환율 찾아보기</h2><p>통화를 선택하면 월별 평균·최저·최고와 매일의 기록을 볼 수 있어요.</p><div class="archive-links">'
     for c, (name, _, _) in CURRENCIES.items():
         months = sorted({d[:7] for d, _ in series(history, c)}, reverse=True)[:3]

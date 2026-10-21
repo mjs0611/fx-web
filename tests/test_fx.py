@@ -1,7 +1,7 @@
 """Offline contracts for observations, exact arithmetic, updates, and published pages."""
 
 from contextlib import redirect_stderr
-from datetime import date
+from datetime import date, timedelta
 from fractions import Fraction
 from html.parser import HTMLParser
 import json
@@ -600,6 +600,19 @@ class PageTests(unittest.TestCase):
         with patch.dict(os.environ, {"ADSENSE_SLOT": "9876543210"}):
             self.assertEqual(fx.main(["build", "--history", str(FIXTURE), "--output", str(self.output)]), 0)
         self.assertIn('data-ad-slot="9876543210"', (self.output / "index.html").read_text())
+
+
+class SignalTests(unittest.TestCase):
+    def test_signal_compares_today_with_one_year_average(self):
+        points = [((date(2025, 1, 1) + timedelta(days=i)).isoformat(), Fraction(100)) for i in range(300)]
+        points.append(("2025-10-28", Fraction(103)))
+        signal = fx.year_signal(points)
+        self.assertEqual(signal["state"], "up")
+        self.assertAlmostEqual(float(signal["percent"]), 2.99, places=2)
+        # 1년 안 관측이 120개 미만이면 신호를 내지 않아요
+        self.assertIsNone(fx.year_signal(points[:50] + [points[-1]]))
+        self.assertIn("1년 평균보다 높아요", fx.signal_cell(signal))
+        self.assertEqual(fx.signal_cell(None), "")
 
 
 if __name__ == "__main__":

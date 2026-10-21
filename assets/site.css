@@ -52,6 +52,10 @@ tbody th { font-weight: 500; }
 .comparison tbody a:hover { text-decoration: underline; }
 .comparison strong { font-size: 1.33333rem; font-weight: 650; white-space: nowrap; }
 .comparison .up, .comparison .down, .comparison .flat { font-size: 1.13333rem; }
+/* 신호등: 점 하나 + 문장. 색만으로 뜻을 전하지 않아요 */
+.signal { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 0.875rem; font-weight: 600; white-space: nowrap; }
+.signal i { width: 10px; height: 10px; border-radius: 50%; background: currentColor; flex: none; }
+.signal.flat { color: var(--muted); }
 .up { color: var(--up); }
 .down { color: var(--down); }
 .flat { color: var(--ink); }
