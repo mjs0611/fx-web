@@ -496,6 +496,19 @@ class PageTests(unittest.TestCase):
                         self.assertEqual([attrs for attrs in doc.head_scripts
                                           if attrs.get("src") == url], expected)
 
+    def test_every_generated_html_starts_head_with_csp_meta(self):
+        fx.build(history(), self.output, slot="1234567890")
+        for page in self.output.rglob("*.html"):
+            with self.subTest(page=page.relative_to(self.output)):
+                head = page.read_text(encoding="utf-8").split("<head>", 1)[1]
+                self.assertTrue(head.startswith('<meta http-equiv="Content-Security-Policy" content="default-src \'self\';'), head[:120])
+                csp = head.split('content="', 1)[1].split('"', 1)[0]
+                for origin in ("https://cdn.jsdelivr.net", "https://ditoaxis.com/m.js", "https://static.cloudflareinsights.com",
+                               "https://pagead2.googlesyndication.com"):
+                    self.assertIn(origin, csp)
+                self.assertNotIn("frame-ancestors", csp)
+                self.assertNotIn("report-", csp)
+
     def test_not_found_page_and_local_assets_are_available(self):
         fx.build(history(), self.output)
         not_found = Document((self.output / "404.html").read_text())
