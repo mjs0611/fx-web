@@ -57,6 +57,20 @@ class UiBuildTests(unittest.TestCase):
                 self.assertEqual((site / asset).read_bytes(), (fx.ROOT / asset).read_bytes())
             fetch.assert_not_called()
 
+    def test_adds_json_ld_to_a_site_published_without_it(self):
+        import re
+        with tempfile.TemporaryDirectory() as root, patch.object(fx, 'fetch_rows') as fetch:
+            site = self.site(root)
+            pattern = r'\n<script type="application/ld\+json">.*?</script>'
+            for page in site.rglob('*.html'):
+                page.write_text(re.sub(pattern, '', page.read_text(), flags=re.S))
+            self.assertNotIn('application/ld+json', (site / 'index.html').read_text())
+            with patch.dict(ui.os.environ, {'ADSENSE_SLOT': ''}):
+                ui.rebuild(site)
+            for page in site.rglob('*.html'):
+                self.assertEqual(page.read_text().count('<script type="application/ld+json">'), 1)
+            fetch.assert_not_called()
+
     def test_data_or_financial_content_change_stops_publication(self):
         for mutation in ['data', 'content']:
             with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as root:

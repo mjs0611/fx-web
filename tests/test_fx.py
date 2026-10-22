@@ -496,6 +496,46 @@ class PageTests(unittest.TestCase):
                         self.assertEqual([attrs for attrs in doc.head_scripts
                                           if attrs.get("src") == url], expected)
 
+    def test_every_generated_html_has_one_schema_org_json_ld_in_head(self):
+        import re
+        for label, data in (("empty", fx.empty_history()), ("fixture", history())):
+            fx.build(data, self.output, slot="1234567890")
+            for page in self.output.rglob("*.html"):
+                path = page.relative_to(self.output).as_posix()
+                with self.subTest(build=label, page=path):
+                    source = page.read_text(encoding="utf-8")
+                    blocks = re.findall(r'<script type="application/ld\+json">(.*?)</script>', source, re.S)
+                    self.assertEqual(len(blocks), 1)
+                    self.assertIn(blocks[0], source.split("</head>", 1)[0])
+                    self.assertNotIn("<", blocks[0])
+                    data_ld = json.loads(blocks[0])
+                    self.assertEqual(data_ld["@context"], "https://schema.org")
+                    nodes = {node["@type"]: node for node in data_ld.get("@graph", [data_ld])}
+                    description = Document(source).attrs("meta", name="description")[0]["content"]
+                    if path == "index.html":
+                        app, site = nodes["WebApplication"], nodes["WebSite"]
+                        self.assertEqual((app["name"], app["url"], app["description"]),
+                                         ("환율 신호등", fx.SITE_URL + "/", description))
+                        self.assertEqual((app["applicationCategory"], app["operatingSystem"], app["inLanguage"],
+                                          app["isAccessibleForFree"]), ("FinanceApplication", "Web", "ko", True))
+                        self.assertEqual((app["offers"]["price"], app["offers"]["priceCurrency"]), ("0", "KRW"))
+                        self.assertEqual(app["publisher"], {"@type": "Organization", "name": "디토엑시스", "url": "https://ditoaxis.com/"})
+                        self.assertEqual(site["url"], fx.SITE_URL + "/")
+                        continue
+                    page_ld = nodes["WebPage"]
+                    canonical = fx.SITE_URL + "/" + ("404.html" if path == "404.html" else path[:-len("index.html")])
+                    self.assertEqual((page_ld["url"], page_ld["description"], page_ld["inLanguage"], page_ld["isPartOf"]["url"]),
+                                     (canonical, description, "ko", fx.SITE_URL + "/"))
+                    self.assertIn(f"<title>{page_ld['name']} | 환율 신호등</title>", source)
+                    self.assertNotIn("datePublished", page_ld)
+                    if path.split("/")[0].upper() in fx.CURRENCIES:
+                        crumbs = nodes["BreadcrumbList"]["itemListElement"]
+                        self.assertEqual([c["position"] for c in crumbs], list(range(1, path.count("/") + 2)))
+                        self.assertEqual(crumbs[0]["item"], fx.SITE_URL + "/")
+                        self.assertEqual(crumbs[-1]["item"], canonical)
+                    else:
+                        self.assertEqual(set(nodes), {"WebPage"})
+
     def test_every_generated_html_starts_head_with_csp_meta(self):
         fx.build(history(), self.output, slot="1234567890")
         for page in self.output.rglob("*.html"):
