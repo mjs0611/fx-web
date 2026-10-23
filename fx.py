@@ -422,7 +422,7 @@ def structured_data(title: str, path: str, description: str) -> str:
 
 def shell(title: str, path: str, body: str, slot="", noindex=False) -> str:
     canonical = SITE_URL + "/" + path
-    description = title + ". ECB 참고 환율의 실제 기준일과 원화 환산 기록을 확인해요."
+    description = title + ". 환율 신호등에서 원화 환산과 최근 1년 평균보다 높은지 낮은지를 바로 확인해요."
     links = ''.join(f'<a href="/{c.lower()}/"'+ (' aria-current="page"' if path.startswith(c.lower()+'/') else '') + f'>{c}<span>{CURRENCIES[c][2]}</span></a>' for c in CURRENCIES)
     ad = (f'<aside class="ad-slot" aria-label="광고"><p>광고</p><ins class="adsbygoogle" '
           f'data-ad-client="{CLIENT}" data-ad-slot="{e(slot)}" data-ad-format="auto" '
