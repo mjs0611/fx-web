@@ -13,28 +13,42 @@ class Element {
     this.dataset = {};
     this.children = [];
     this.listeners = {};
+    this.style = {};
+    const classes = new Set();
+    this.classList = { add: (...names) => names.forEach(name => classes.add(name)), remove: (...names) => names.forEach(name => classes.delete(name)), contains: name => classes.has(name) };
+    this.animations = [];
     this.textContent = '';
     this.hidden = true;
     this.disabled = true;
     this.value = '';
   }
   setAttribute(key, value) { this.attrs[key] = value; }
+  getAttribute(key) { return this.attrs[key]; }
   removeAttribute(key) { delete this.attrs[key]; }
   append(...children) { this.children.push(...children); }
   replaceChildren(...children) { this.children = children; }
   addEventListener(event, callback) { this.listeners[event] = callback; }
   fire(event) { this.listeners[event]({ target: this }); }
   closest() { return this; }
+  querySelectorAll() { return []; }
+  animate(frames, options) {
+    const animation = { frames, options, canceled: false, cancel() { this.canceled = true; } };
+    this.animations.push(animation);
+    return animation;
+  }
 }
-function mount({ numerator = '9', denominator = '1', unit = '엔', topic = '은', toward = '으로', points } = {}) {
+function mount({ numerator = '9', denominator = '1', unit = '엔', topic = '은', toward = '으로', points, animated = false, reduced = false, reveals = [], navigation, storage } = {}) {
   const input = new Element('input'); input.value = '100';
   const option = new Element('option'); option.dataset = { numerator, denominator, unit, topic, toward };
   const currency = new Element('select'); currency.options = [option]; currency.selectedIndex = 0;
   const swap = new Element('button'); swap.dataset = { direction: 'to-krw' };
   const label = new Element('span');
   const output = new Element('output');
+  const counter = new Element('span');
+  const icon = new Element('svg');
+  const result = new Element();
   const converter = new Element();
-  converter.querySelector = (selector) => ({ '#amount': input, '#currency': currency, '#direction': swap, '#conversion-label': label, output })[selector];
+  converter.querySelector = (selector) => ({ '#amount': input, '#currency': currency, '#direction': swap, '#conversion-label': label, '[data-counter]': counter, '.swap-icon': icon, '.result': result, output })[selector];
   const data = new Element('script'); data.textContent = JSON.stringify(points);
   const chart = new Element();
   const summary = new Element();
@@ -44,13 +58,30 @@ function mount({ numerator = '9', denominator = '1', unit = '엔', topic = '은'
   });
   controls.querySelectorAll = () => buttons;
   const document = {
-    querySelector: selector => selector === '[data-converter]' ? converter : controls,
+    querySelector: selector => ({ '[data-converter]': converter, '.range-buttons': controls, '.currencies': navigation })[selector],
+    querySelectorAll: () => reveals,
     getElementById: id => ({ 'chart-data': points ? data : null, 'trend-chart': chart, 'chart-summary': summary })[id],
     createElement: tag => new Element(tag),
     createElementNS: (_, tag) => new Element(tag),
   };
-  vm.runInNewContext(source, { document, Intl, Number, Date, Math });
-  return { input, currency, option, swap, label, output, controls, buttons, chart, summary };
+  const frames = new Map();
+  let nextFrame = 0;
+  const preference = { matches: reduced, listeners: [], addEventListener: (_, listener) => preference.listeners.push(listener) };
+  const environment = { document, Intl, Number, Date, Math, matchMedia: () => preference, sessionStorage: storage };
+  const observers = [];
+  if (animated) {
+    environment.requestAnimationFrame = callback => { frames.set(++nextFrame, callback); return nextFrame; };
+    environment.cancelAnimationFrame = id => frames.delete(id);
+    environment.IntersectionObserver = class {
+      constructor(callback) { this.callback = callback; this.observed = new Set(); observers.push(this); }
+      observe(element) { this.observed.add(element); }
+      unobserve(element) { this.observed.delete(element); }
+      disconnect() { this.observed.clear(); }
+    };
+  }
+  vm.runInNewContext(source, environment);
+  const advance = now => { const pending = [...frames.values()]; frames.clear(); pending.forEach(callback => callback(now)); };
+  return { input, currency, option, swap, label, output, counter, icon, result, controls, buttons, chart, summary, frames, advance, observers, preference };
 }
 function descendants(root, tag) {
   return root.children.flatMap(child => [...(child.tagName === tag ? [child] : []), ...descendants(child, tag)]);
@@ -122,4 +153,100 @@ test('single or flat observations produce finite chart coordinates', () => {
       assert.ok(Number.isFinite(Number(circle.attrs.cy)));
     }
   }
+});
+
+test('counter exposes final output immediately, retargets from current value and cancels invalid input', () => {
+  const page = mount({ numerator: '1400', unit: '달러', topic: '는', animated: true });
+  assert.equal(page.output.textContent, '140,000원');
+  assert.equal(page.counter.textContent, '0.00원');
+  assert.equal(page.output.classList.contains('is-counted'), true);
+  page.advance(0); page.advance(300);
+  const intermediate = page.counter.textContent;
+  assert.notEqual(intermediate, '140,000원');
+  page.input.value = '200'; page.input.fire('input');
+  assert.equal(page.output.textContent, '280,000원');
+  assert.equal(page.counter.textContent, intermediate);
+  assert.equal(page.frames.size, 1);
+  page.advance(300); page.advance(900);
+  assert.equal(page.counter.textContent, '280,000원');
+  assert.equal(page.frames.size, 0);
+  page.input.value = '300'; page.input.fire('input');
+  page.input.value = ''; page.input.fire('input');
+  assert.equal(page.frames.size, 0);
+  assert.equal(page.counter.textContent, page.output.textContent);
+});
+
+test('swap rotates with direction, crosses values and replaces interrupted animations', () => {
+  const page = mount({ animated: true });
+  page.swap.listeners.click();
+  assert.equal(page.icon.style.transform, 'rotate(180deg)');
+  assert.equal(page.result.animations[0].options.duration, 260);
+  assert.match(page.input.animations[0].frames[0].transform, /18px/);
+  page.swap.listeners.click();
+  assert.equal(page.icon.style.transform, 'rotate(360deg)');
+  assert.equal(page.result.animations[0].canceled, true);
+  assert.equal(page.swap.dataset.direction, 'to-krw');
+});
+
+test('reveal observes once, staggers 50ms and moves each dot from its own mean', () => {
+  const rows = [new Element(), new Element()];
+  const dots = rows.map(() => { const dot = new Element(); dot.dataset = { average: '42.50', today: '18.25' }; return dot; });
+  rows.forEach((row, index) => { row.querySelectorAll = () => [dots[index]]; });
+  const page = mount({ animated: true, reveals: rows });
+  assert.ok(rows.every(row => row.classList.contains('reveal-pending')));
+  const observer = page.observers[0];
+  observer.callback([{ target: rows[0], isIntersecting: false }]);
+  assert.equal(observer.observed.size, 2);
+  observer.callback(rows.map(target => ({ target, isIntersecting: true })));
+  assert.equal(observer.observed.size, 0);
+  assert.deepEqual(rows.map(row => row.style.animationDelay), ['0ms', '50ms']);
+  assert.equal(dots[1].animations[0].frames[0].transform, 'translateX(42.50%)');
+  assert.equal(dots[1].animations[0].frames[1].transform, 'translateX(18.25%)');
+  assert.equal(dots[1].animations[0].options.duration, 650);
+  rows[0].fire('animationend');
+  assert.equal(rows[0].classList.contains('reveal-enter'), false);
+});
+
+test('reduced motion shows final numbers and static positions, including mid-animation changes', () => {
+  const row = new Element();
+  const page = mount({ animated: true, reduced: true, reveals: [row] });
+  assert.equal(page.counter.textContent, page.output.textContent);
+  assert.equal(page.frames.size, 0);
+  assert.equal(row.classList.contains('reveal-pending'), false);
+  page.swap.listeners.click();
+  assert.equal(page.result.animations.length, 0);
+  const moving = mount({ animated: true });
+  moving.preference.matches = true;
+  moving.preference.listeners.forEach(listener => listener({ matches: true }));
+  assert.equal(moving.counter.textContent, moving.output.textContent);
+  assert.equal(moving.frames.size, 0);
+  moving.input.value = ''; moving.input.fire('input');
+  moving.preference.listeners.forEach(listener => listener({ matches: true }));
+  assert.equal(moving.counter.textContent, '0부터 1조까지 금액을 입력해 주세요.');
+});
+
+test('currency indicator slides across native page links without intercepting navigation', () => {
+  const navigation = new Element('nav');
+  const links = ['/usd/', '/jpy/', '/eur/', '/cny/', '/gbp/'].map((href, index) => {
+    const link = new Element('a', { href });
+    link.getBoundingClientRect = () => ({ left: 20 + 70 * index, width: 64 });
+    return link;
+  });
+  const values = new Map([['fx-previous-currency', '/usd/']]);
+  const storage = { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
+  navigation.querySelectorAll = () => links;
+  navigation.querySelector = () => links[3];
+  navigation.getBoundingClientRect = () => ({ left: 20 });
+  mount({ navigation, storage });
+  const indicator = navigation.children[0];
+  assert.equal(indicator.style.transform, 'translateX(210px) scaleX(64)');
+  assert.equal(indicator.animations[0].frames[0].transform, 'translateX(0px) scaleX(64)');
+  assert.equal(indicator.animations[0].options.duration, 300);
+  let prevented = false;
+  navigation.listeners.click({ target: links[4], button: 0, preventDefault: () => { prevented = true; } });
+  assert.equal(prevented, false);
+  assert.equal(values.get('fx-previous-currency'), '/cny/');
+  assert.equal(indicator.style.transform, 'translateX(280px) scaleX(64)');
+  navigation.listeners.click({ target: links[0], button: 0, metaKey: true });
+  assert.equal(indicator.style.transform, 'translateX(280px) scaleX(64)');
 });

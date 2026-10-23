@@ -8,6 +8,7 @@ import json
 import io
 import os
 from pathlib import Path
+import re
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -548,6 +549,12 @@ class PageTests(unittest.TestCase):
                     self.assertIn(origin, csp)
                 self.assertNotIn("frame-ancestors", csp)
                 self.assertNotIn("report-", csp)
+                inline = [attrs for attrs in Document(page.read_text()).attrs("script")
+                          if "src" not in attrs and attrs.get("type", "") not in
+                          ("application/json", "application/ld+json")]
+                # Existing AdSense initialization + common menu handlers only.
+                self.assertEqual(len(inline), 1 if page.name == "404.html" else 2)
+                self.assertNotRegex(page.read_text(), r'\son(?:click|load|input|change)=')
 
     def test_not_found_page_and_local_assets_are_available(self):
         fx.build(history(), self.output)
@@ -643,6 +650,48 @@ class PageTests(unittest.TestCase):
 
 
 class SignalTests(unittest.TestCase):
+    def test_range_uses_the_same_observed_window_and_exact_fraction_positions(self):
+        points = [("2024-10-28", Fraction(9999))]
+        points += [((date(2025, 1, 1) + timedelta(days=i)).isoformat(), Fraction(100 + i))
+                   for i in range(120)]
+        points.append(("2025-10-28", Fraction(125)))
+        signal = fx.year_signal(points)
+        self.assertEqual(signal["count"], 121)
+        self.assertEqual(signal["low"], 100)
+        self.assertEqual(signal["high"], 219)
+        self.assertEqual(signal["average"], Fraction(19265, 121))
+        self.assertEqual(signal["today_position"], Fraction(2500, 119))
+        self.assertEqual(signal["average_position"], (signal["average"] - 100) / 119 * 100)
+        source = fx.signal_cell(signal)
+        doc = Document(source)
+        self.assertIn("최저 100.00원, 최고 219.00원", doc.attrs("div", role="img")[0]["aria-label"])
+        self.assertIn('data-today="21.01"', source)
+        self.assertNotIn("reveal-pending", source)
+        self.assertNotIn("hidden", doc.attrs("div", role="img")[0])
+
+    def test_flat_and_sparse_observations_never_make_a_range_up(self):
+        points = [((date(2025, 1, 1) + timedelta(days=i)).isoformat(), Fraction(900)) for i in range(120)]
+        signal = fx.year_signal(points)
+        self.assertEqual((signal["average_position"], signal["today_position"]), (50, 50))
+        self.assertIn('translateX(50.00%)', fx.signal_cell(signal))
+        for sparse in ([], points[:1], points[:119]):
+            self.assertEqual(fx.signal_cell(fx.year_signal(sparse)), "")
+
+    def test_home_ranges_keep_yen_units_and_omit_stale_currencies(self):
+        data = fx.empty_history()
+        start = date(2025, 1, 1)
+        for i in range(180):
+            day = start + timedelta(days=i)
+            if day.weekday() < 5:
+                data["rates"][day.isoformat()] = {"KRW": "1500", "JPY": "150", "USD": "1"}
+        data["rates"][max(data["rates"])].pop("USD")
+        source = fx.home(data)
+        groups = re.findall(r'<tbody class="currency-group">(.*?)</tbody>', source)
+        self.assertNotIn('class="signal ', groups[0])
+        self.assertIn("자료 대기", groups[0])
+        self.assertIn(f'최근 1년 {len(data["rates"])}개 관측: 최저 1,000.00원', groups[1])
+        self.assertEqual(source.count('class="currency-group"'), 5)
+
     def test_signal_compares_today_with_one_year_average(self):
         points = [((date(2025, 1, 1) + timedelta(days=i)).isoformat(), Fraction(100)) for i in range(300)]
         points.append(("2025-10-28", Fraction(103)))

@@ -248,9 +248,14 @@ def year_signal(points):
     window = [value for day, value in points if iso(day) > start]
     if len(window) < 120:
         return None
-    percent = (latest / (sum(window) / len(window)) - 1) * 100
+    average = sum(window) / len(window)
+    low, high = min(window), max(window)
+    position = lambda value: (value - low) / (high - low) * 100 if high != low else Fraction(50)
+    percent = (latest / average - 1) * 100
     state = "up" if percent >= 2 else "down" if percent <= -2 else "flat"
-    return {"percent": percent, "state": state, "count": len(window)}
+    return {"percent": percent, "state": state, "count": len(window),
+            "low": low, "high": high, "average": average, "latest": latest,
+            "average_position": position(average), "today_position": position(latest)}
 
 
 SIGNAL_TEXT = {"up": "1년 평균보다 높아요", "down": "1년 평균보다 낮아요", "flat": "1년 평균과 비슷해요"}
@@ -259,8 +264,19 @@ SIGNAL_TEXT = {"up": "1년 평균보다 높아요", "down": "1년 평균보다 �
 def signal_cell(signal) -> str:
     if signal is None:
         return ''
-    return (f'<span class="signal {signal["state"]}"><i aria-hidden="true"></i>'
-            f'{SIGNAL_TEXT[signal["state"]]} ({number(signal["percent"], True)}%)</span>')
+    average = number(signal["average_position"])
+    today = number(signal["today_position"])
+    description = (f'최근 1년 {signal["count"]}개 관측: 최저 {number(signal["low"])}원, '
+                   f'최고 {number(signal["high"])}원, 평균 {number(signal["average"])}원, '
+                   f'오늘 {number(signal["latest"])}원')
+    return (f'<div class="signal {signal["state"]}"><div class="signal-range" role="img" aria-label="{description}">'
+            f'<div class="signal-track" aria-hidden="true"><span class="signal-average" style="left:{average}%" '
+            f'title="1년 평균 {number(signal["average"])}원"></span>'
+            f'<span class="signal-position" data-average="{average}" data-today="{today}" '
+            f'style="transform:translateX({today}%)"><i></i></span></div>'
+            f'<div class="signal-extents" aria-hidden="true"><span>최저 {number(signal["low"])}</span>'
+            f'<span>최고 {number(signal["high"])}</span></div></div>'
+            f'<span class="signal-text">{SIGNAL_TEXT[signal["state"]]} ({number(signal["percent"], True)}%)</span></div>')
 
 
 def delta_cell(value) -> str:
@@ -331,8 +347,8 @@ def converter(history: dict, selected: str, title_tag: str = "h2") -> str:
 <{title_tag} id="converter-title">원화로 얼마예요?</{title_tag}><p class="muted">기준일 {ko_day(day)}, 하루 한 번 바뀌어요</p>
 <div class="converter-fields"><div><label for="amount">바꿀 금액({unit})</label><input id="amount" type="number" inputmode="decimal" min="0" max="1000000000000" step="any" value="100" disabled></div>
 <div><label for="currency">통화</label><select id="currency" disabled>{options}</select></div></div>
-<button type="button" class="swap" id="direction" data-direction="to-krw" hidden>원화를 {unit}{TOWARD[unit]} 바꾸기</button>
-<div class="result" role="status" aria-live="polite"><span class="result-label" id="conversion-label">100{unit}{TOPIC[unit]} 약</span><output id="conversion" for="amount currency">{money_text(rate * 100)}원</output></div>
+<button type="button" class="swap" id="direction" data-direction="to-krw" hidden><svg class="swap-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16m-4-4 4 4-4 4M20 16H4m4-4-4 4 4 4"/></svg><span data-swap-label>원화를 {unit}{TOWARD[unit]} 바꾸기</span></button>
+<div class="result" role="status" aria-live="polite" aria-atomic="true"><span class="result-label" id="conversion-label">100{unit}{TOPIC[unit]} 약</span><div class="result-value"><output id="conversion" for="amount currency">{money_text(rate * 100)}원</output><span class="result-number" data-counter aria-hidden="true" hidden></span></div></div>
 <p class="muted">ECB 참고 환율로 계산했어요. 은행에서 실제로 바꿀 때는 수수료 때문에 달라요.</p>
 <noscript><p>계산기를 쓰려면 자바스크립트를 켜주세요. 1{unit} = {number(rate)}원이에요.</p></noscript></section>'''
 
@@ -460,14 +476,18 @@ def home(history: dict) -> str:
     else:
         body = '<div class="fx-top">' + converter(history, "USD", "h1")
         body += f'<section class="today" aria-labelledby="today-title"><h2 id="today-title">오늘 환율</h2><p class="muted">기준일 <strong>{ko_day(latest)}</strong>, ECB 참고 환율이에요. 은행 환율이나 실시간 시세와 달라요.</p>'
-        body += '<table class="comparison"><caption class="dx-sr">통화별 원화 환율과 변화</caption><thead><tr><th scope="col">통화</th><th scope="col">원화 환율</th><th scope="col">전 기준일보다</th><th scope="col">1주 전보다</th><th scope="col">1년 전보다</th></tr></thead><tbody>'
+        body += '<table class="comparison"><caption class="dx-sr">통화별 원화 환율과 변화</caption><thead><tr><th scope="col">통화</th><th scope="col">원화 환율</th><th scope="col">전 기준일보다</th><th scope="col">1주 전보다</th><th scope="col">1년 전보다</th></tr></thead>'
         for c, (name, multiplier, unit) in CURRENCIES.items():
             points = series(history, c)
             has_current = points and points[-1][0] == latest
             cells = ''.join(f'<td data-label="{label}">{delta_cell(comparison(points, period) if has_current else None)}</td>' for period, label in [('day', '전 기준일보다'), ('week', '1주 전보다'), ('year', '1년 전보다')])
             value = number(points[-1][1]) + '원' if has_current else '자료 대기'
-            body += f'<tr><th scope="row"><a href="/{c.lower()}/"><span class="code">{c}</span>{name}</a><small>{multiplier}{unit} 기준</small>{signal_cell(year_signal(points) if has_current else None)}</th><td data-label="원화 환율"><strong>{value}</strong></td>{cells}</tr>'
-        body += '</tbody></table>' + compare_dates_line(history, latest)
+            signal = signal_cell(year_signal(points) if has_current else None)
+            body += f'<tbody class="currency-group"><tr class="currency-row"><th scope="row"><a href="/{c.lower()}/"><span class="code">{c}</span>{name}</a><small>{multiplier}{unit} 기준</small></th><td data-label="원화 환율"><strong>{value}</strong></td>{cells}</tr>'
+            if signal:
+                body += f'<tr class="signal-row"><td colspan="5">{signal}</td></tr>'
+            body += '</tbody>'
+        body += '</table>' + compare_dates_line(history, latest)
         body += '<p class="muted">신호등은 오늘 환율을 최근 1년 관측 평균과 비교한 거예요. 환전을 권하는 뜻은 아니에요. 자료가 없는 날은 값을 채우지 않아요. 1주·1년 비교는 통화를 누르면 볼 수 있어요. 비교 방법은 <a href="/about/">집계 기준</a>에 있어요.</p></section></div>'
     body += '<section><h2>월별 환율 찾아보기</h2><p>통화를 선택하면 월별 평균·최저·최고와 매일의 기록을 볼 수 있어요.</p><div class="archive-links">'
     for c, (name, _, _) in CURRENCIES.items():
