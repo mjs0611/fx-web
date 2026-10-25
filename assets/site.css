@@ -139,6 +139,10 @@ output, .result-number { display: block; min-width: 0; font-size: clamp(1.75rem,
 .stats span { display: block; font-size: 0.875rem; }
 .stats strong { display: block; font-size: 1.86667rem; font-weight: 650; }
 .daily { max-width: 760px; }
+.year-link { display: inline-flex; align-items: center; min-height: 44px; font-weight: 600; }
+.year-table td small { display: block; }
+.year-summary p, .year-table { overflow-wrap: normal; }
+.year-summary .num { white-space: nowrap; }
 .prose { max-width: 760px; padding-top: 24px; }
 .prose h2 { margin-top: 32px; margin-bottom: 12px; }
 .ad-slot { padding-top: 12px; border-top: 1px solid var(--rule); margin-top: 36px; font-size: 0.875rem; }
@@ -198,6 +202,8 @@ footer nav { display: flex; flex-wrap: wrap; gap: 12px 24px; }
   .stats strong { font-size: 1.26667rem; }
   .stats small { font-size: 0.875rem; }
   .daily th, .daily td { padding: 14px 8px; font-size: 0.933333rem; }
+  .year-table th, .year-table td { padding: 14px 8px; font-size: 0.933333rem; }
+  .year-table :is(th, td):nth-child(3), .year-table :is(th, td):nth-child(4) { display: none; }
 }
 
 /* JS alone adds reveal-pending; static and JS-off content stays visible. */

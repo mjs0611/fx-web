@@ -20,6 +20,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent
 SITE_URL = "https://fx.ditoaxis.com"
+RECENT_MONTHS = 12  # month pages kept in the index; older ones are noindex,follow
 API = "https://api.frankfurter.dev/v2/providers/ecb/rates"
 START = date(2015, 1, 1)
 CLIENT = "ca-pub-4557219410513767"
@@ -521,7 +522,7 @@ def currency_page(history: dict, currency: str) -> str:
     years = sorted({month[:4] for month in months}, reverse=True)
     for i, year in enumerate(years):
         year_months = [month for month in months if month.startswith(year)]
-        body += f'<details class="archive-year"{" open" if i == 0 else ""}><summary><span>{year}년</span><span class="month-count">{len(year_months)}개월 기록</span></summary><div class="month-links">'
+        body += f'<details class="archive-year"{" open" if i == 0 else ""}><summary><span>{year}년</span><span class="month-count">{len(year_months)}개월 기록</span></summary><a class="year-link" href="/{currency.lower()}/{year}/">{year}년 정리 보기</a><div class="month-links">'
         body += ''.join(f'<a href="/{currency.lower()}/{month}/">{ko_month(month)}</a>' for month in year_months)
         body += '</div></details>'
     if not months:
@@ -533,7 +534,8 @@ def month_page(currency: str, month: str, points) -> str:
     name, multiplier, unit = CURRENCIES[currency]
     stats = monthly_stats(points)
     heading = f'{ko_month(month)} {name} 평균 환율'
-    body = f'<div class="heading"><a href="/{currency.lower()}/">← {name} 환율 전체 보기</a><h1>{heading}</h1><p>{multiplier}{unit} 기준, ECB 참고 환율</p></div>'
+    body = (f'<div class="heading"><a href="/{currency.lower()}/{month[:4]}/">← {int(month[:4])}년 {name} 환율 정리</a>'
+            f'<h1>{heading}</h1><p>{multiplier}{unit} 기준, ECB 참고 환율</p></div>')
     body += f'<div class="stats"><div><span>평균</span><strong>{number(stats["average"])}원</strong></div>'
     for key, label in [('low', '최저'), ('high', '최고')]:
         day, value = stats[key]
@@ -541,6 +543,65 @@ def month_page(currency: str, month: str, points) -> str:
     body += f'</div><p>{stats["count"]}개 관측, 수집 범위 {ko_day(points[0][0])}~{ko_day(points[-1][0])}</p>'
     body += '<p class="muted">이 달에 수집한 관측값만 집계했어요. 월말 이전이거나 자료가 추가되면 통계가 달라질 수 있어요.</p>'
     body += f'<section><h2>이 달의 흐름</h2>{chart(points, heading)}</section><section><h2>날짜별 환율</h2>{daily_table(points, f"{multiplier}{unit}")}</section>'
+    return body
+
+
+def change_text(new: Fraction, old: Fraction) -> str:
+    delta = new - old
+    if number(delta) == "0.00":
+        return "거의 같았어요"
+    word = "높았어요" if delta > 0 else "낮았어요"
+    return f'{number(abs(delta))}원({number(abs(new / old - 1) * 100)}%) {word}'
+
+
+def year_page(currency: str, year: str, points, previous) -> str:
+    """연도 요약: 월별 페이지 12개를 한 번에 읽을 수 있게 비교 문장과 월별 표로 묶어요."""
+    name, multiplier, unit = CURRENCIES[currency]
+    stats = monthly_stats(points)
+    months = sorted({d[:7] for d, _ in points})
+    monthly = {m: monthly_stats([p for p in points if p[0].startswith(m)]) for m in months}
+    lines = []
+    if previous:
+        lines.append(f'{year}년 평균은 {int(year) - 1}년 평균 {number(monthly_stats(previous)["average"])}원보다 '
+                     + change_text(stats["average"], monthly_stats(previous)["average"]) + '.')
+    first, last = points[0], points[-1]
+    move = (last[1] / first[1] - 1) * 100
+    lines.append(f'첫 관측 {ko_day(first[0])} {number(first[1])}원에서 마지막 관측 {ko_day(last[0])} {number(last[1])}원으로 '
+                 + (f'{number(abs(move))}% {"올랐어요" if move > 0 else "내렸어요"}.' if number(move) != "0.00" else '거의 그대로였어요.'))
+    if len(months) > 1:
+        top = max(months, key=lambda m: monthly[m]["average"])
+        bottom = min(months, key=lambda m: monthly[m]["average"])
+        lines.append(f'월평균이 가장 높았던 달은 {int(top[5:])}월({number(monthly[top]["average"])}원), '
+                     f'가장 낮았던 달은 {int(bottom[5:])}월({number(monthly[bottom]["average"])}원)이에요.')
+        steps = [(months[i], monthly[months[i]]["average"] / monthly[months[i - 1]]["average"] - 1) for i in range(1, len(months))]
+        month, step = max(steps, key=lambda s: abs(s[1]))
+        lines.append(f'전달보다 월평균이 가장 크게 움직인 달은 {int(month[5:])}월로, '
+                     f'{number(abs(step) * 100)}% {"올랐어요" if step > 0 else "내렸어요"}.')
+    spread = (stats["high"][1] / stats["low"][1] - 1) * 100
+    lines.append(f'한 해 최저와 최고의 차이는 {number(stats["high"][1] - stats["low"][1])}원({number(spread)}%)이에요.')
+    heading = f'{year}년 {name} 환율 정리'
+    body = (f'<div class="heading"><a href="/{currency.lower()}/">← {name} 환율 전체 보기</a><h1>{heading}</h1>'
+            f'<p>{multiplier}{unit} 기준, ECB 참고 환율</p></div>')
+    body += f'<div class="stats"><div><span>연평균</span><strong>{number(stats["average"])}원</strong></div>'
+    for key, label in [('low', '최저'), ('high', '최고')]:
+        day, value = stats[key]
+        body += f'<div><span>{label}</span><strong>{number(value)}원</strong><small>{ko_day(day)}</small></div>'
+    body += f'</div><p>{stats["count"]}개 관측, 수집 범위 {ko_day(first[0])}~{ko_day(last[0])}</p>'
+    if len(months) < 12:
+        body += '<p class="muted">아직 한 해가 끝나지 않았거나 자료가 빠진 달이 있어요. 관측이 추가되면 숫자가 달라질 수 있어요.</p>'
+    body += '<section class="year-summary"><h2>한눈에 보기</h2>' + ''.join('<p>' + re.sub(r'[\d,.]+(?:원|%)', lambda m: f'<span class="num">{m.group()}</span>', line) + '</p>' for line in lines) + '</section>'
+    body += f'<section><h2>한 해 흐름</h2>{chart(points, heading)}</section>'
+    rows, before = '', None
+    for m in months:
+        st = monthly[m]
+        delta = delta_cell(None if before is None else {"delta": st["average"] - before, "percent": (st["average"] / before - 1) * 100})
+        rows += (f'<tr><th scope="row"><a href="/{currency.lower()}/{m}/">{int(m[5:])}월</a></th><td>{number(st["average"])}원</td>'
+                 f'<td>{number(st["low"][1])}원</td><td>{number(st["high"][1])}원</td><td>{delta}</td></tr>')
+        before = st["average"]
+    body += ('<section><h2>월별 평균</h2><table class="year-table"><caption class="dx-sr">' + e(heading) + ' 월별 평균·최저·최고</caption>'
+             '<thead><tr><th scope="col">월</th><th scope="col">평균</th><th scope="col">최저</th><th scope="col">최고</th>'
+             f'<th scope="col">전달보다</th></tr></thead><tbody>{rows}</tbody></table>'
+             '<p class="muted">월을 누르면 그달의 최저·최고와 날짜별 환율을 볼 수 있어요. 이유나 전망은 담지 않고 관측값만 비교했어요.</p></section>')
     return body
 
 
@@ -562,9 +623,16 @@ def build(history: dict, output: Path, slot="") -> int:
     for currency, (name, _, _) in CURRENCIES.items():
         points = series(history, currency)
         pages.append((currency.lower() + "/", name + " 환율, 추이와 원화 계산기", currency_page(history, currency), not points))
-        for month in sorted({d[:7] for d, _ in points}):
+        months = sorted({d[:7] for d, _ in points})
+        for year in sorted({m[:4] for m in months}):
+            yearly = [p for p in points if p[0].startswith(year)]
+            previous = [p for p in points if p[0].startswith(str(int(year) - 1))]
+            pages.append((f'{currency.lower()}/{year}/', f'{year}년 {name} 환율 정리', year_page(currency, year, yearly, previous), False))
+        # Older months stay reachable but leave the index: near-identical number pages read as thin to Google.
+        recent = set(months[-RECENT_MONTHS:])
+        for month in months:
             monthly = [p for p in points if p[0].startswith(month)]
-            pages.append((f'{currency.lower()}/{month}/', f'{ko_month(month)} {name} 평균 환율', month_page(currency, month, monthly), False))
+            pages.append((f'{currency.lower()}/{month}/', f'{ko_month(month)} {name} 평균 환율', month_page(currency, month, monthly), month not in recent))
     for path, title, body, noindex in pages:
         destination = output / path / "index.html"
         destination.parent.mkdir(parents=True, exist_ok=True)

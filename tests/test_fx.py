@@ -417,7 +417,7 @@ class PageTests(unittest.TestCase):
         self.assertEqual(len(disclosures), len(years))
         self.assertIn('open', disclosures[0])
         self.assertTrue(all('open' not in attrs for attrs in disclosures[1:]))
-        month_links = [a['href'] for a in doc.attrs('a') if a['href'].count('/') == 3]
+        month_links = [a['href'] for a in doc.attrs('a') if a['href'].count('/') == 3 and '-' in a['href']]
         self.assertEqual(month_links, [f'/usd/{month}/' for month in months])
 
     def test_month_route_keeps_parent_currency_selected_and_company_return_link(self):
@@ -579,6 +579,26 @@ class PageTests(unittest.TestCase):
         self.assertEqual((int.from_bytes(png[16:20], "big"), int.from_bytes(png[20:24], "big")),
                          (1200, 630))
 
+
+    def test_year_pages_indexed_and_only_recent_months_in_sitemap(self):
+        original = fx.RECENT_MONTHS
+        fx.RECENT_MONTHS = 2
+        self.addCleanup(setattr, fx, "RECENT_MONTHS", original)
+        fx.build(history(), self.output)
+        urls = {node.text for node in ET.fromstring((self.output / "sitemap.xml").read_text()).findall("{*}url/{*}loc")}
+        for currency in fx.CURRENCIES:
+            months = sorted({d[:7] for d, _ in fx.series(history(), currency)})
+            for year in {m[:4] for m in months}:
+                self.assertIn(f"{fx.SITE_URL}/{currency.lower()}/{year}/", urls)
+            for month in months:
+                page = (self.output / currency.lower() / month / "index.html").read_text()
+                indexed = month in months[-2:]
+                self.assertEqual(f"{fx.SITE_URL}/{currency.lower()}/{month}/" in urls, indexed)
+                self.assertEqual('content="noindex,follow"' in page, not indexed)
+                self.assertIn(f'href="/{currency.lower()}/{month[:4]}/"', page)
+        year = (self.output / "usd" / "2024" / "index.html").read_text()
+        self.assertIn("2024년 평균은 2023년 평균", year)
+        self.assertIn('href="/usd/2024-03/"', year)
 
     def test_month_pages_show_exact_observed_dates_only(self):
         fx.build(history(), self.output)
