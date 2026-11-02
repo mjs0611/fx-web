@@ -16,7 +16,6 @@
 <url><loc>https://fx.ditoaxis.com/usd/2024/</loc></url>
 <url><loc>https://fx.ditoaxis.com/usd/2025/</loc></url>
 <url><loc>https://fx.ditoaxis.com/usd/2026/</loc></url>
-<url><loc>https://fx.ditoaxis.com/usd/2025-11/</loc></url>
 <url><loc>https://fx.ditoaxis.com/usd/2025-12/</loc></url>
 <url><loc>https://fx.ditoaxis.com/usd/2026-01/</loc></url>
 <url><loc>https://fx.ditoaxis.com/usd/2026-02/</loc></url>
@@ -28,6 +27,7 @@
 <url><loc>https://fx.ditoaxis.com/usd/2026-08/</loc></url>
 <url><loc>https://fx.ditoaxis.com/usd/2026-09/</loc></url>
 <url><loc>https://fx.ditoaxis.com/usd/2026-10/</loc></url>
+<url><loc>https://fx.ditoaxis.com/usd/2026-11/</loc></url>
 <url><loc>https://fx.ditoaxis.com/jpy/</loc></url>
 <url><loc>https://fx.ditoaxis.com/jpy/2015/</loc></url>
 <url><loc>https://fx.ditoaxis.com/jpy/2016/</loc></url>
@@ -41,7 +41,6 @@
 <url><loc>https://fx.ditoaxis.com/jpy/2024/</loc></url>
 <url><loc>https://fx.ditoaxis.com/jpy/2025/</loc></url>
 <url><loc>https://fx.ditoaxis.com/jpy/2026/</loc></url>
-<url><loc>https://fx.ditoaxis.com/jpy/2025-11/</loc></url>
 <url><loc>https://fx.ditoaxis.com/jpy/2025-12/</loc></url>
 <url><loc>https://fx.ditoaxis.com/jpy/2026-01/</loc></url>
 <url><loc>https://fx.ditoaxis.com/jpy/2026-02/</loc></url>
@@ -53,6 +52,7 @@
 <url><loc>https://fx.ditoaxis.com/jpy/2026-08/</loc></url>
 <url><loc>https://fx.ditoaxis.com/jpy/2026-09/</loc></url>
 <url><loc>https://fx.ditoaxis.com/jpy/2026-10/</loc></url>
+<url><loc>https://fx.ditoaxis.com/jpy/2026-11/</loc></url>
 <url><loc>https://fx.ditoaxis.com/eur/</loc></url>
 <url><loc>https://fx.ditoaxis.com/eur/2015/</loc></url>
 <url><loc>https://fx.ditoaxis.com/eur/2016/</loc></url>
@@ -66,7 +66,6 @@
 <url><loc>https://fx.ditoaxis.com/eur/2024/</loc></url>
 <url><loc>https://fx.ditoaxis.com/eur/2025/</loc></url>
 <url><loc>https://fx.ditoaxis.com/eur/2026/</loc></url>
-<url><loc>https://fx.ditoaxis.com/eur/2025-11/</loc></url>
 <url><loc>https://fx.ditoaxis.com/eur/2025-12/</loc></url>
 <url><loc>https://fx.ditoaxis.com/eur/2026-01/</loc></url>
 <url><loc>https://fx.ditoaxis.com/eur/2026-02/</loc></url>
@@ -78,6 +77,7 @@
 <url><loc>https://fx.ditoaxis.com/eur/2026-08/</loc></url>
 <url><loc>https://fx.ditoaxis.com/eur/2026-09/</loc></url>
 <url><loc>https://fx.ditoaxis.com/eur/2026-10/</loc></url>
+<url><loc>https://fx.ditoaxis.com/eur/2026-11/</loc></url>
 <url><loc>https://fx.ditoaxis.com/cny/</loc></url>
 <url><loc>https://fx.ditoaxis.com/cny/2015/</loc></url>
 <url><loc>https://fx.ditoaxis.com/cny/2016/</loc></url>
@@ -91,7 +91,6 @@
 <url><loc>https://fx.ditoaxis.com/cny/2024/</loc></url>
 <url><loc>https://fx.ditoaxis.com/cny/2025/</loc></url>
 <url><loc>https://fx.ditoaxis.com/cny/2026/</loc></url>
-<url><loc>https://fx.ditoaxis.com/cny/2025-11/</loc></url>
 <url><loc>https://fx.ditoaxis.com/cny/2025-12/</loc></url>
 <url><loc>https://fx.ditoaxis.com/cny/2026-01/</loc></url>
 <url><loc>https://fx.ditoaxis.com/cny/2026-02/</loc></url>
@@ -103,6 +102,7 @@
 <url><loc>https://fx.ditoaxis.com/cny/2026-08/</loc></url>
 <url><loc>https://fx.ditoaxis.com/cny/2026-09/</loc></url>
 <url><loc>https://fx.ditoaxis.com/cny/2026-10/</loc></url>
+<url><loc>https://fx.ditoaxis.com/cny/2026-11/</loc></url>
 <url><loc>https://fx.ditoaxis.com/gbp/</loc></url>
 <url><loc>https://fx.ditoaxis.com/gbp/2015/</loc></url>
 <url><loc>https://fx.ditoaxis.com/gbp/2016/</loc></url>
@@ -116,7 +116,6 @@
 <url><loc>https://fx.ditoaxis.com/gbp/2024/</loc></url>
 <url><loc>https://fx.ditoaxis.com/gbp/2025/</loc></url>
 <url><loc>https://fx.ditoaxis.com/gbp/2026/</loc></url>
-<url><loc>https://fx.ditoaxis.com/gbp/2025-11/</loc></url>
 <url><loc>https://fx.ditoaxis.com/gbp/2025-12/</loc></url>
 <url><loc>https://fx.ditoaxis.com/gbp/2026-01/</loc></url>
 <url><loc>https://fx.ditoaxis.com/gbp/2026-02/</loc></url>
@@ -128,4 +127,5 @@
 <url><loc>https://fx.ditoaxis.com/gbp/2026-08/</loc></url>
 <url><loc>https://fx.ditoaxis.com/gbp/2026-09/</loc></url>
 <url><loc>https://fx.ditoaxis.com/gbp/2026-10/</loc></url>
+<url><loc>https://fx.ditoaxis.com/gbp/2026-11/</loc></url>
 </urlset>
