@@ -618,6 +618,8 @@ def build(history: dict, output: Path, slot="") -> int:
     (output / "assets").mkdir(exist_ok=True)
     for filename in ("site.css", "site.js", "favicon.svg", "og.png"):
         shutil.copyfile(ROOT / "assets" / filename, output / "assets" / filename)
+    # Root /favicon.ico for crawlers and browsers that ignore <link rel=icon> (same mark as assets/favicon.svg).
+    shutil.copyfile(ROOT / "assets" / "favicon.ico", output / "favicon.ico")
     pages = [("", "오늘 환율, 달러·엔화·유로를 원화로", home(history), not history["rates"]),
              ("about/", "집계 기준과 출처", ABOUT, False), ("privacy/", "개인정보처리방침", PRIVACY, False)]
     for currency, (name, _, _) in CURRENCIES.items():
