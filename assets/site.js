@@ -9,6 +9,24 @@
   const decimal = (value) => fmt(value, 2);
   const won = (value) => (value >= 1000 ? fmt(Math.round(value), 0) : decimal(value));
   const plain = (value) => new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 }).format(value);
+  // 금액 칸: 쉼표를 빼고 읽어요. 숫자·쉼표·소수점 말고 다른 글자가 있으면 그대로 두어 오류로 알려요
+  const parseAmount = (text) => (/^[\d,]*\.?\d*$/.test(text.trim()) && /\d/.test(text) ? Number(text.trim().replace(/,/g, "")) : Number(text.trim() === "" ? NaN : text));
+  const groupDigits = (digits) => digits.replace(/^0+(?=\d)/, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  // 1234567 → "123만 4,567". 조·억·만 단위로 읽어 줘요(소수는 뒤에 그대로)
+  function koreanAmount(value) {
+    const [whole, fraction] = String(value).split(".");
+    let rest = BigInt(whole || "0");
+    if (rest === 0n) return "0" + (fraction ? "." + fraction : "");
+    const parts = [];
+    for (const name of ["", "만", "억", "조"]) {
+      const chunk = rest % 10000n;
+      if (chunk) parts.unshift(groupDigits(String(chunk)) + name);
+      rest /= 10000n;
+      if (!rest) break;
+    }
+    const text = parts.join(" ");
+    return fraction ? `${text}.${fraction}` : text;
+  }
   const motion = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
   const easing = "cubic-bezier(.22,1,.36,1)";
   const running = new Map();
@@ -35,6 +53,7 @@
     const counter = converter.querySelector("[data-counter]");
     const swapLabel = converter.querySelector("[data-swap-label]") || swap;
     const icon = converter.querySelector(".swap-icon");
+    const reading = converter.querySelector("#amount-reading");
     let frame = 0;
     let displayed = 0;
     let target = 0;
@@ -81,7 +100,13 @@
       swapLabel.textContent = toKRW ? `원화를 ${unit}${picked.dataset.toward || "로"} 바꾸기` : `${unit}${object} 원화로 바꾸기`;
       const amountLabel = converter.querySelector('label[for="amount"]');
       if (amountLabel) amountLabel.textContent = toKRW ? `바꿀 금액(${unit})` : "바꿀 금액(원)";
-      const input = Number(amount.value);
+      const input = parseAmount(amount.value);
+      if (reading) {
+        const ok = /^[\d,]*\.?\d*$/.test(amount.value.trim()) && Number.isFinite(input) && input >= 0 && input <= 1e12;
+        reading.hidden = !ok;
+        const plainText = amount.value.trim().replace(/,/g, "");
+        reading.textContent = ok ? (toKRW ? `${koreanAmount(plainText)}${unit}` : `${koreanAmount(plainText)} 원`) : "";
+      }
       if (amount.value.trim() === "" || !Number.isFinite(input) || input < 0 || input > 1e12) {
         label.textContent = "";
         finishCount();
@@ -103,7 +128,22 @@
     amount.disabled = false;
     currency.disabled = false;
     swap.hidden = false;
-    amount.addEventListener("input", convert);
+    // 치는 동안 쉼표를 넣고, 커서는 같은 숫자 뒤에 그대로 둬요
+    function addCommas() {
+      const raw = amount.value;
+      if (!/^[\d,]*\.?\d*$/.test(raw)) return;
+      const caret = typeof amount.selectionStart === "number" ? amount.selectionStart : raw.length;
+      const digitsBefore = raw.slice(0, caret).replace(/,/g, "").length;
+      const [whole, fraction] = raw.replace(/,/g, "").split(".");
+      const formatted = groupDigits(whole) + (fraction !== undefined ? "." + fraction : "");
+      if (formatted === raw) return;
+      amount.value = formatted;
+      if (typeof amount.setSelectionRange !== "function") return;
+      let position = 0;
+      for (let seen = 0; position < formatted.length && seen < digitsBefore; position += 1) if (formatted[position] !== ",") seen += 1;
+      amount.setSelectionRange(position, position);
+    }
+    amount.addEventListener("input", () => { addCommas(); convert(); });
     currency.addEventListener("change", convert);
     swap.addEventListener("click", () => {
       swap.dataset.direction = swap.dataset.direction === "from-krw" ? "to-krw" : "from-krw";
