@@ -47,8 +47,9 @@ function mount({ numerator = '9', denominator = '1', unit = '엔', topic = '은'
   const counter = new Element('span');
   const icon = new Element('svg');
   const result = new Element();
+  const reading = new Element('p');
   const converter = new Element();
-  converter.querySelector = (selector) => ({ '#amount': input, '#currency': currency, '#direction': swap, '#conversion-label': label, '[data-counter]': counter, '.swap-icon': icon, '.result': result, output })[selector];
+  converter.querySelector = (selector) => ({ '#amount': input, '#currency': currency, '#direction': swap, '#conversion-label': label, '[data-counter]': counter, '.swap-icon': icon, '.result': result, '#amount-reading': reading, output })[selector];
   const data = new Element('script'); data.textContent = JSON.stringify(points);
   const chart = new Element();
   const summary = new Element();
@@ -81,7 +82,7 @@ function mount({ numerator = '9', denominator = '1', unit = '엔', topic = '은'
   }
   vm.runInNewContext(source, environment);
   const advance = now => { const pending = [...frames.values()]; frames.clear(); pending.forEach(callback => callback(now)); };
-  return { input, currency, option, swap, label, output, counter, icon, result, controls, buttons, chart, summary, frames, advance, observers, preference };
+  return { input, reading, currency, option, swap, label, output, counter, icon, result, controls, buttons, chart, summary, frames, advance, observers, preference };
 }
 function descendants(root, tag) {
   return root.children.flatMap(child => [...(child.tagName === tag ? [child] : []), ...descendants(child, tag)]);
@@ -126,6 +127,28 @@ test('converter updates direction, accepts zero, rejects empty/negative/nonfinit
   page.input.value = '0'; page.input.fire('input');
   assert.equal(page.output.textContent, '0.00달러');
   assert.equal(page.input.attrs['aria-invalid'], undefined);
+});
+test('amount input adds commas while typing and reads the amount in Korean units under the field', () => {
+  const page = mount({ numerator: '1400', unit: '달러', topic: '는', toward: '로' });
+  page.input.value = '1234567'; page.input.fire('input');
+  assert.equal(page.input.value, '1,234,567');
+  assert.equal(page.reading.textContent, '123만 4,567달러');
+  assert.equal(page.reading.hidden, false);
+  assert.equal(page.input.attrs['aria-invalid'], undefined);
+  page.input.value = '1,234,567.5'; page.input.fire('input');
+  assert.equal(page.reading.textContent, '123만 4,567.5달러');
+  page.swap.listeners.click();
+  page.input.value = '3500000'; page.input.fire('input');
+  assert.equal(page.input.value, '3,500,000');
+  assert.equal(page.reading.textContent, '350만 원');
+  assert.equal(page.output.textContent, '2,500.00달러');
+  page.input.value = '1000000000000'; page.input.fire('input');
+  assert.equal(page.reading.textContent, '1조 원');
+  for (const bad of ['-1', '1e3', 'abc']) {
+    page.input.value = bad; page.input.fire('input');
+    assert.equal(page.input.value, bad, 'non-numeric text is left as typed');
+    assert.equal(page.reading.hidden, true);
+  }
 });
 test('range selection keeps only observations and never bridges weekends or holidays', () => {
   const points = [['2025-09-01', 800], ['2026-08-03', 810], ['2026-09-04', 900], ['2026-09-07', 910], ['2026-09-08', 905], ['2026-09-10', 920]];
