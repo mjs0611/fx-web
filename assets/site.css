@@ -424,3 +424,8 @@ button:active::after { opacity: .1; transition-duration: 90ms; }
   .dx-dot { background: CanvasText; }
 }
 @media print { .dx-bar { display: none; } }
+/* design-r1 (11/16): 금액 아래 우리말 단위 읽기, 바꾸기 버튼 hover */
+.amount-reading { margin: 6px 0 0; font-size: 14px; line-height: 1.5; color: #4E5968; font-variant-numeric: tabular-nums; word-break: keep-all; }
+.amount-reading[hidden] { display: none; }
+#amount { font-variant-numeric: tabular-nums; }
+@media (hover: hover) and (pointer: fine) { .swap:hover { background: #F2F4F6; } }
